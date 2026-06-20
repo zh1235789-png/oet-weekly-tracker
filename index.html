@@ -54,6 +54,10 @@
   .row.pre{opacity:.4}
   .row.pre .box{border-style:dashed}
   .pretag{color:var(--faint);font-weight:700}
+  .todayhd{font-size:15px;font-weight:800;color:var(--L);margin:2px 0 10px;display:flex;align-items:center;gap:6px}
+  .todaynone{font-size:13px;color:var(--dim);background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:16px;margin-bottom:8px;text-align:center}
+  .weekhd{font-size:13px;font-weight:800;color:var(--dim);letter-spacing:.04em;
+    margin:22px 0 12px;padding-top:16px;border-top:1px solid var(--line)}
   .box{width:26px;height:26px;border:2px solid var(--faint);border-radius:8px;flex:none;
     display:flex;align-items:center;justify-content:center;font-size:16px;color:transparent;margin-top:1px}
   .row.done .box{background:var(--ok);border-color:var(--ok);color:#0f172a}
@@ -185,38 +189,46 @@ function weekView(){
   const total=ws.total, done=ws.done;
   const pct=total?Math.round(done/total*100):0;
 
+  // START対応の行ビルダー
+  const buildLDay=di=>{
+    const d=dates[di], k=dailyKey(d), pre=dkey(d)<START;
+    const isToday=(viewOffset===0&&di===TI.wd);
+    return {key:k, pre, html:taskRow({key:k,done:isDone(k),pre,
+      dayLabel:DAYJP[di], dayDate:`${d.getMonth()+1}/${d.getDate()}`, isToday,
+      overdue:(!pre&&d<TI.date&&!isDone(k)), lab:DAILY_L.lab, note:DAILY_L.note})};
+  };
+  const buildTask=t=>{
+    const k=taskKey(viewOffset,t.id), dd=t.day!==null?dates[t.day]:null;
+    const pre=t.day!==null?dkey(dd)<START:dkey(dates[6])<START;
+    const isToday=(viewOffset===0&&t.day===TI.wd);
+    return {key:k, pre, html:taskRow({key:k,done:isDone(k),pre,
+      dayLabel:t.day!==null?DAYJP[t.day]:"任意", dayDate:dd?`${dd.getMonth()+1}/${dd.getDate()}`:"",
+      isToday, overdue:(!pre&&dd&&dd<TI.date&&!isDone(k)), lab:t.lab, note:t.note||""})};
+  };
+
   let h=ringHTML(pct,done,total);
   h+=carryHTML();
 
-  // group by session
+  // ① 今日のタスク（現在週のみ）
+  const shownToday=new Set();
+  if(viewOffset===0){
+    const items=[];
+    if(L_DAYS.includes(TI.wd)){ const r=buildLDay(TI.wd); if(!r.pre) items.push(r); }
+    WEEK_TASKS.filter(t=>t.day===TI.wd).forEach(t=>{ const r=buildTask(t); if(!r.pre) items.push(r); });
+    items.forEach(r=>shownToday.add(r.key));
+    const td=dates[TI.wd];
+    h+=`<div class="todayhd">📍 今日 ${DAYJP[TI.wd]} ${td.getMonth()+1}/${td.getDate()}</div>`;
+    h+= items.length ? items.map(r=>r.html).join("")
+      : `<div class="todaynone">今日やるべき必須タスクはありません${dkey(TI.date)<START?'（プログラム開始前）':'。下の任意タスク（S/W）から進めてOK'}</div>`;
+  }
+
+  // ② 今週のタスク（曜日別・今日は除外）
+  h+=`<div class="weekhd">🗓 ${viewOffset===0?'今週のタスク（曜日別）':'この週のタスク'}</div>`;
   for(const sk of ["L","R","S","W"]){
     let rows="";
-    if(sk==="L"){
-      L_DAYS.forEach(di=>{
-        const d=dates[di], k=dailyKey(d), pre=dkey(d)<START;
-        rows+=taskRow({
-          key:k, done:isDone(k), pre:pre,
-          dayLabel:DAYJP[di], dayDate:`${d.getMonth()+1}/${d.getDate()}`,
-          isToday:(viewOffset===0&&di===TI.wd),
-          overdue:(!pre&&d<TI.date&&!isDone(k)),
-          lab:DAILY_L.lab, note:DAILY_L.note
-        });
-      });
-    }
-    WEEK_TASKS.filter(t=>t.sess===sk).forEach(t=>{
-      const k=taskKey(viewOffset,t.id);
-      const dd=t.day!==null?dates[t.day]:null;
-      const pre=t.day!==null?dkey(dd)<START:dkey(dates[6])<START;
-      rows+=taskRow({
-        key:k, done:isDone(k), pre:pre,
-        dayLabel:t.day!==null?DAYJP[t.day]:"任意",
-        dayDate:dd?`${dd.getMonth()+1}/${dd.getDate()}`:"",
-        isToday:(viewOffset===0&&t.day===TI.wd),
-        overdue:(!pre&&dd&&dd<TI.date&&!isDone(k)),
-        lab:t.lab, note:t.note||""
-      });
-    });
-    h+=`<div class="grp"><div class="ghead"><span class="dot" style="background:${SESS[sk].color}"></span>${sk} · ${SESS[sk].name}</div>${rows}</div>`;
+    if(sk==="L") L_DAYS.forEach(di=>{ const r=buildLDay(di); if(!shownToday.has(r.key)) rows+=r.html; });
+    WEEK_TASKS.filter(t=>t.sess===sk).forEach(t=>{ const r=buildTask(t); if(!shownToday.has(r.key)) rows+=r.html; });
+    if(rows) h+=`<div class="grp"><div class="ghead"><span class="dot" style="background:${SESS[sk].color}"></span>${sk} · ${SESS[sk].name}</div>${rows}</div>`;
   }
   return h;
 }
