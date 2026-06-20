@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OET 週次トラッカー</title>
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OET">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230f172a'/%3E%3Ctext x='90' y='118' font-size='90' text-anchor='middle' fill='%2338bdf8' font-family='sans-serif' font-weight='bold'%3EOET%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22OET%20Weekly%22%2C%22short_name%22%3A%22OET%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%230f172a%22%7D">
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#273548; --line:#334155;
+    --txt:#e2e8f0; --dim:#94a3b8; --faint:#64748b;
+    --L:#38bdf8; --R:#a78bfa; --S:#fb923c; --W:#34d399;
+    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Segoe UI",sans-serif;
+    padding:env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 80px);}
+  header{position:sticky;top:0;z-index:10;background:rgba(15,23,42,.92);
+    backdrop-filter:blur(8px);padding:14px 16px 8px;border-bottom:1px solid var(--line)}
+  h1{font-size:17px;margin:0 0 2px;display:flex;align-items:center;gap:8px}
+  .wknav{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:13px;color:var(--dim)}
+  .wknav button{background:var(--card2);border:1px solid var(--line);color:var(--txt);
+    width:34px;height:30px;border-radius:8px;font-size:15px}
+  .wknav .range{font-weight:600;color:var(--txt)}
+  .tabs{display:flex;gap:6px;margin-top:10px}
+  .tabs button{flex:1;background:transparent;border:none;color:var(--dim);
+    padding:8px 0;font-size:14px;font-weight:600;border-radius:8px}
+  .tabs button.on{background:var(--card2);color:var(--txt)}
+  main{padding:14px 16px;max-width:560px;margin:0 auto}
+  .ring{display:flex;align-items:center;gap:14px;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  .ring svg{flex:none}
+  .ring .info{font-size:13px;color:var(--dim)}
+  .ring .info b{font-size:15px;color:var(--txt)}
+  .carry{background:#3b1d1d;border:1px solid #7f1d1d;border-radius:14px;padding:12px 14px;margin-bottom:14px}
+  .carry h3{margin:0 0 6px;font-size:13px;color:#fca5a5}
+  .carry .ci{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;color:#fecaca}
+  .carry .ci .tag{font-size:10px;padding:1px 6px;border-radius:5px;background:#7f1d1d}
+  .carry .ci .box{margin-left:auto;width:24px;height:24px;border:1.5px solid #fca5a5;border-radius:6px;flex:none}
+  .grp{margin-bottom:16px}
+  .ghead{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.04em}
+  .dot{width:10px;height:10px;border-radius:3px}
+  .row{display:flex;align-items:flex-start;gap:12px;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;transition:.12s}
+  .row.today{border-color:var(--L)}
+  .row.done{opacity:.55}
+  .row.overdue{border-color:#7f1d1d}
+  .box{width:26px;height:26px;border:2px solid var(--faint);border-radius:8px;flex:none;
+    display:flex;align-items:center;justify-content:center;font-size:16px;color:transparent;margin-top:1px}
+  .row.done .box{background:var(--ok);border-color:var(--ok);color:#0f172a}
+  .meta{flex:1;min-width:0}
+  .meta .day{font-size:11px;color:var(--dim);font-weight:700;margin-bottom:2px}
+  .meta .day .now{color:var(--L)}
+  .meta .lab{font-size:14px;line-height:1.4}
+  .row.done .meta .lab{text-decoration:line-through;text-decoration-color:var(--faint)}
+  .meta .note{font-size:11px;color:var(--faint);margin-top:4px;line-height:1.4}
+  .empty{color:var(--faint);font-size:13px;text-align:center;padding:24px 0}
+  /* stats */
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .stat h3{margin:0 0 12px;font-size:13px;color:var(--dim);font-weight:600}
+  .streak{display:flex;align-items:baseline;gap:8px}
+  .streak .big{font-size:46px;font-weight:800;color:var(--L);line-height:1}
+  .streak .u{font-size:14px;color:var(--dim)}
+  .streak .max{margin-left:auto;font-size:12px;color:var(--faint);text-align:right}
+  .heat{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;gap:3px;overflow-x:auto;padding-bottom:4px}
+  .cell{width:13px;height:13px;border-radius:3px;background:var(--card2)}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:90px}
+  .bar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
+  .bar .fill{width:100%;background:var(--L);border-radius:4px 4px 0 0;min-height:2px;opacity:.85}
+  .bar .wl{font-size:9px;color:var(--faint)}
+  .counts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cnt{background:var(--card2);border-radius:10px;padding:12px}
+  .cnt .n{font-size:24px;font-weight:800}
+  .cnt .l{font-size:11px;color:var(--dim);margin-top:2px}
+  .legend{display:flex;gap:6px;align-items:center;font-size:10px;color:var(--faint);margin-top:8px;justify-content:flex-end}
+  .legend .cell{width:11px;height:11px}
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 OET 週次トラッカー</h1>
+  <div class="wknav">
+    <button id="prev">‹</button>
+    <span class="range" id="range"></span>
+    <button id="next">›</button>
+  </div>
+  <div class="tabs">
+    <button id="t-week" class="on">今週</button>
+    <button id="t-stats">積み重ね</button>
+  </div>
+</header>
+<main id="app"></main>
+
+<script>
+"use strict";
+const KEY="oet-weekly-v2";
+const SESS={
+  L:{name:"Listening",color:"var(--L)"},
+  R:{name:"Reading",color:"var(--R)"},
+  S:{name:"Speaking",color:"var(--S)"},
+  W:{name:"Writing",color:"var(--W)"},
+};
+// 0=Mon .. 6=Sun
+const DAYJP=["月","火","水","木","金","土","日"];
+// task templates
+const DAILY_L={id:"L-core",sess:"L",lab:"Lコア：①ディクテ→②シャドー→③スペリング",
+  note:"最低でも①ディクテ15分。連続性が命。前半=Part A中心 / 後半=Part Cも混ぜる"};
+const WEEK_TASKS=[
+  {id:"L-sun",sess:"L",day:6,lab:"問題集1回分＋パート別採点→スコアログ",
+   note:"🔁 間違えた音源は翌週のディクテ素材へ回す"},
+  {id:"R-tue",sess:"R",day:1,lab:"Part C テキスト①（解く→間違い＋自信なしを深掘り）"},
+  {id:"R-wed",sess:"R",day:2,lab:"Part C テキスト②（同上）"},
+  {id:"R-fri",sess:"R",day:4,lab:"Part B 1セット（6問）を深掘り"},
+  {id:"R-sat",sess:"R",day:5,lab:"溢れた復習＋Part A 1セット15分（計測のみ）＋誤答ノート週次見直し"},
+  {id:"S-roleplay",sess:"S",day:null,lab:"ロールプレイ ×1"},
+  {id:"S-reading",sess:"S",day:null,lab:"音読 ×1"},
+  {id:"S-phrase",sess:"S",day:null,lab:"フレーズ暗記 ×1"},
+  {id:"W-write",sess:"W",day:null,lab:"本番 referral letter を1通書いて提出"},
+  {id:"W-grade",sess:"W",day:null,lab:"Claude添削／採点を反映"},
+];
+// L daily runs Mon..Sat (days 0..5)
+const L_DAYS=[0,1,2,3,4,5];
+
+let state=JSON.parse(localStorage.getItem(KEY)||'{"done":{}}');
+let viewOffset=0;   // weeks from current
+let tab="week";
+
+const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
+function pad(n){return String(n).padStart(2,"0");}
+function dkey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
+function monday(offset){
+  const n=new Date(); n.setHours(0,0,0,0);
+  const wd=(n.getDay()+6)%7;            // 0=Mon
+  n.setDate(n.getDate()-wd+offset*7);
+  return n;
+}
+function weekDates(offset){
+  const m=monday(offset); const a=[];
+  for(let i=0;i<7;i++){const d=new Date(m);d.setDate(m.getDate()+i);a.push(d);}
+  return a;
+}
+const wkKey=offset=>"w:"+dkey(monday(offset));
+const dailyKey=(d)=>"d:"+dkey(d)+":L-core";
+const taskKey=(offset,id)=>wkKey(offset)+":"+id;
+const isDone=k=>!!state.done[k];
+function toggle(k){ if(state.done[k]) delete state.done[k]; else state.done[k]=true; save(); render(); }
+
+function todayInfo(){
+  const t=new Date(); t.setHours(0,0,0,0);
+  return {date:t,key:dkey(t),wd:(t.getDay()+6)%7};
+}
+
+/* ---------- WEEK VIEW ---------- */
+function weekView(){
+  const dates=weekDates(viewOffset);
+  const TI=todayInfo();
+  const m=dates[0], su=dates[6];
+  document.getElementById("range").textContent=
+    `${m.getMonth()+1}/${m.getDate()}(月) – ${su.getMonth()+1}/${su.getDate()}(日)`+
+    (viewOffset===0?"  今週":viewOffset<0?`  ${viewOffset}週`:`  +${viewOffset}週`);
+
+  // progress
+  let total=0,done=0;
+  L_DAYS.forEach(di=>{total++; if(isDone(dailyKey(dates[di]))) done++;});
+  WEEK_TASKS.forEach(t=>{total++; if(isDone(taskKey(viewOffset,t.id))) done++;});
+  const pct=Math.round(done/total*100);
+
+  let h=ringHTML(pct,done,total);
+  h+=carryHTML();
+
+  // group by session
+  for(const sk of ["L","R","S","W"]){
+    let rows="";
+    if(sk==="L"){
+      L_DAYS.forEach(di=>{
+        const d=dates[di], k=dailyKey(d);
+        rows+=taskRow({
+          key:k, done:isDone(k),
+          dayLabel:DAYJP[di], dayDate:`${d.getMonth()+1}/${d.getDate()}`,
+          isToday:(viewOffset===0&&di===TI.wd),
+          overdue:(d<TI.date&&!isDone(k)),
+          lab:DAILY_L.lab, note:DAILY_L.note
+        });
+      });
+    }
+    WEEK_TASKS.filter(t=>t.sess===sk).forEach(t=>{
+      const k=taskKey(viewOffset,t.id);
+      const dd=t.day!==null?dates[t.day]:null;
+      rows+=taskRow({
+        key:k, done:isDone(k),
+        dayLabel:t.day!==null?DAYJP[t.day]:"任意",
+        dayDate:dd?`${dd.getMonth()+1}/${dd.getDate()}`:"",
+        isToday:(viewOffset===0&&t.day===TI.wd),
+        overdue:(dd&&dd<TI.date&&!isDone(k)),
+        lab:t.lab, note:t.note||""
+      });
+    });
+    h+=`<div class="grp"><div class="ghead"><span class="dot" style="background:${SESS[sk].color}"></span>${sk} · ${SESS[sk].name}</div>${rows}</div>`;
+  }
+  return h;
+}
+function ringHTML(pct,done,total){
+  const r=26,c=2*Math.PI*r,off=c*(1-pct/100);
+  return `<div class="ring">
+    <svg width="64" height="64" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--line)" stroke-width="7"/>
+      <circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--L)" stroke-width="7"
+        stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"
+        transform="rotate(-90 32 32)"/>
+      <text x="32" y="37" text-anchor="middle" font-size="15" font-weight="800" fill="var(--txt)">${pct}%</text>
+    </svg>
+    <div class="info"><b>今週 ${done}/${total} 完了</b><br>残り ${total-done} 件</div>
+  </div>`;
+}
+function carryHTML(){
+  if(viewOffset!==0) return "";
+  // last week's incomplete (weekly + dayPinned + sunday), exclude daily L
+  const items=[];
+  WEEK_TASKS.forEach(t=>{
+    const k=taskKey(-1,t.id);
+    if(!isDone(k)) items.push({k,sess:t.sess,lab:t.lab});
+  });
+  if(!items.length) return "";
+  let ci=items.map(it=>`<div class="ci" onclick="toggle('${it.k}')">
+      <span class="tag" style="color:var(--${it.sess==='L'?'L':it.sess==='R'?'R':it.sess==='S'?'S':'W'})">${it.sess}</span>
+      <span>${it.lab}</span><span class="box"></span></div>`).join("");
+  return `<div class="carry"><h3>🔴 先週のやり残し ${items.length}件（タップで消化）</h3>${ci}</div>`;
+}
+function taskRow(o){
+  let cls="row"+(o.done?" done":"")+(o.isToday&&!o.done?" today":"")+(o.overdue?" overdue":"");
+  const dayHTML=`<div class="day">${o.isToday?'<span class="now">● 今日 ':''}${o.dayLabel}${o.dayDate?" "+o.dayDate:""}${o.isToday?'</span>':''}</div>`;
+  return `<div class="${cls}" onclick="toggle('${o.key}')">
+    <div class="box">✓</div>
+    <div class="meta">${dayHTML}<div class="lab">${o.lab}</div>${o.note?`<div class="note">${o.note}</div>`:""}</div>
+  </div>`;
+}
+
+/* ---------- STATS VIEW ---------- */
+function statsView(){
+  // streak (current): walk back from today over Mon..Sat
+  const t=new Date(); t.setHours(0,0,0,0);
+  let cur=0, d=new Date(t);
+  for(let i=0;i<400;i++){
+    const wd=(d.getDay()+6)%7;
+    if(wd===6){ d.setDate(d.getDate()-1); continue; } // Sunday: skip
+    const done=isDone(dailyKey(d));
+    if(done){ cur++; }
+    else if(d<t){ break; } // past & missed -> break (today not-yet-done is forgiven)
+    d.setDate(d.getDate()-1);
+  }
+  // longest streak over recorded daily keys
+  const dailyDates=Object.keys(state.done).filter(k=>k.startsWith("d:")&&k.endsWith("L-core"))
+    .map(k=>k.slice(2,12)).sort();
+  let mx=0,run=0,prev=null;
+  dailyDates.forEach(ds=>{
+    if(prev){
+      const pa=new Date(prev),ca=new Date(ds);
+      let gap=Math.round((ca-pa)/86400000);
+      // tolerate a single Sunday gap
+      if(gap===1||(gap===2&&((pa.getDay()+6)%7===5))) run++;
+      else run=1;
+    } else run=1;
+    mx=Math.max(mx,run); prev=ds;
+  });
+
+  let h=`<div class="stat"><h3>🔥 Lディクテーション 連続記録</h3>
+    <div class="streak"><span class="big">${cur}</span><span class="u">日連続</span>
+    <span class="max">最長 ${mx}日<br>総実施 ${dailyDates.length}日</span></div></div>`;
+
+  // heatmap last 12 weeks
+  const cells=[];
+  const start=monday(-11);
+  for(let i=0;i<7*12;i++){
+    const dt=new Date(start); dt.setDate(start.getDate()+i);
+    const wd=(dt.getDay()+6)%7;
+    let on=false,future=dt>t;
+    if(wd===6) on=isDone(taskKey(weekOffsetOf(dt),"L-sun"));
+    else on=isDone(dailyKey(dt));
+    let col= future?"var(--card2)": on?"var(--L)":"var(--card2)";
+    let op = on?(wd===6?.55:1):1;
+    cells.push(`<div class="cell" style="background:${col};opacity:${op}" title="${dkey(dt)}"></div>`);
+  }
+  h+=`<div class="stat"><h3>過去12週間の実施（縦=月→日）</h3>
+    <div class="heat">${cells.join("")}</div>
+    <div class="legend">少 <span class="cell" style="background:var(--card2)"></span>
+    <span class="cell" style="background:var(--L);opacity:.55"></span>
+    <span class="cell" style="background:var(--L)"></span> 多</div></div>`;
+
+  // weekly completion bars last 8 weeks
+  let bars="";
+  for(let w=-7;w<=0;w++){
+    const dates=weekDates(w); let tot=0,dn=0;
+    L_DAYS.forEach(di=>{tot++;if(isDone(dailyKey(dates[di])))dn++;});
+    WEEK_TASKS.forEach(tk=>{tot++;if(isDone(taskKey(w,tk.id)))dn++;});
+    const p=Math.round(dn/tot*100);
+    bars+=`<div class="bar"><div class="fill" style="height:${p}%"></div>
+      <div class="wl">${w===0?'今':w}</div></div>`;
+  }
+  h+=`<div class="stat"><h3>週次達成率（直近8週）</h3><div class="bars">${bars}</div></div>`;
+
+  // cumulative counts
+  const c=k=>Object.keys(state.done).filter(x=>k.test(x)).length;
+  const cR=Object.keys(state.done).filter(x=>/:R-/.test(x)).length;
+  const cS=Object.keys(state.done).filter(x=>/:S-/.test(x)).length;
+  const cQ=Object.keys(state.done).filter(x=>/:L-sun/.test(x)).length;
+  const cW=Object.keys(state.done).filter(x=>/:W-write/.test(x)).length;
+  h+=`<div class="stat"><h3>累計</h3><div class="counts">
+    <div class="cnt"><div class="n" style="color:var(--L)">${cQ}</div><div class="l">問題集 完了回</div></div>
+    <div class="cnt"><div class="n" style="color:var(--R)">${cR}</div><div class="l">Reading 演習回</div></div>
+    <div class="cnt"><div class="n" style="color:var(--S)">${cS}</div><div class="l">Speaking 実施回</div></div>
+    <div class="cnt"><div class="n" style="color:var(--W)">${cW}</div><div class="l">Writing 提出通数</div></div>
+  </div></div>`;
+  return h;
+}
+function weekOffsetOf(dt){
+  const m0=monday(0), md=new Date(dt); md.setHours(0,0,0,0);
+  const mw=(md.getDay()+6)%7; md.setDate(md.getDate()-mw);
+  return Math.round((md-m0)/(7*86400000));
+}
+
+/* ---------- RENDER / NAV ---------- */
+function render(){
+  document.getElementById("app").innerHTML = tab==="week"?weekView():statsView();
+  document.getElementById("t-week").classList.toggle("on",tab==="week");
+  document.getElementById("t-stats").classList.toggle("on",tab==="stats");
+  document.querySelector(".wknav").style.visibility = tab==="week"?"visible":"hidden";
+}
+document.getElementById("prev").onclick=()=>{viewOffset--;render();};
+document.getElementById("next").onclick=()=>{viewOffset++;render();};
+document.getElementById("t-week").onclick=()=>{tab="week";render();};
+document.getElementById("t-stats").onclick=()=>{tab="stats";render();};
+render();
+</script>
+</body>
+</html>
