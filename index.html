@@ -51,6 +51,9 @@
   .row.today{border-color:var(--L)}
   .row.done{opacity:.55}
   .row.overdue{border-color:#7f1d1d}
+  .row.pre{opacity:.4}
+  .row.pre .box{border-style:dashed}
+  .pretag{color:var(--faint);font-weight:700}
   .box{width:26px;height:26px;border:2px solid var(--faint);border-radius:8px;flex:none;
     display:flex;align-items:center;justify-content:center;font-size:16px;color:transparent;margin-top:1px}
   .row.done .box{background:var(--ok);border-color:var(--ok);color:#0f172a}
@@ -100,6 +103,7 @@
 <script>
 "use strict";
 const KEY="oet-weekly-v2";
+const START="2026-06-21";   // プログラム開始日。これより前は「開始前」扱い（計上しない）
 const SESS={
   L:{name:"Listening",color:"var(--L)"},
   R:{name:"Reading",color:"var(--R)"},
@@ -155,6 +159,17 @@ function todayInfo(){
   const t=new Date(); t.setHours(0,0,0,0);
   return {date:t,key:dkey(t),wd:(t.getDay()+6)%7};
 }
+// 開始日を考慮した週の集計（開始前の日/タスクは計上しない）
+function weekStats(offset){
+  const dates=weekDates(offset); let total=0,done=0;
+  L_DAYS.forEach(di=>{ if(dkey(dates[di])<START) return; total++; if(isDone(dailyKey(dates[di]))) done++; });
+  WEEK_TASKS.forEach(t=>{
+    if(t.day!==null){ if(dkey(dates[t.day])<START) return; }
+    else { if(dkey(dates[6])<START) return; }   // 任意タスクは週末で判定
+    total++; if(isDone(taskKey(offset,t.id))) done++;
+  });
+  return {total,done};
+}
 
 /* ---------- WEEK VIEW ---------- */
 function weekView(){
@@ -166,10 +181,9 @@ function weekView(){
     (viewOffset===0?"  今週":viewOffset<0?`  ${viewOffset}週`:`  +${viewOffset}週`);
 
   // progress
-  let total=0,done=0;
-  L_DAYS.forEach(di=>{total++; if(isDone(dailyKey(dates[di]))) done++;});
-  WEEK_TASKS.forEach(t=>{total++; if(isDone(taskKey(viewOffset,t.id))) done++;});
-  const pct=Math.round(done/total*100);
+  const ws=weekStats(viewOffset);
+  const total=ws.total, done=ws.done;
+  const pct=total?Math.round(done/total*100):0;
 
   let h=ringHTML(pct,done,total);
   h+=carryHTML();
@@ -179,12 +193,12 @@ function weekView(){
     let rows="";
     if(sk==="L"){
       L_DAYS.forEach(di=>{
-        const d=dates[di], k=dailyKey(d);
+        const d=dates[di], k=dailyKey(d), pre=dkey(d)<START;
         rows+=taskRow({
-          key:k, done:isDone(k),
+          key:k, done:isDone(k), pre:pre,
           dayLabel:DAYJP[di], dayDate:`${d.getMonth()+1}/${d.getDate()}`,
           isToday:(viewOffset===0&&di===TI.wd),
-          overdue:(d<TI.date&&!isDone(k)),
+          overdue:(!pre&&d<TI.date&&!isDone(k)),
           lab:DAILY_L.lab, note:DAILY_L.note
         });
       });
@@ -192,12 +206,13 @@ function weekView(){
     WEEK_TASKS.filter(t=>t.sess===sk).forEach(t=>{
       const k=taskKey(viewOffset,t.id);
       const dd=t.day!==null?dates[t.day]:null;
+      const pre=t.day!==null?dkey(dd)<START:dkey(dates[6])<START;
       rows+=taskRow({
-        key:k, done:isDone(k),
+        key:k, done:isDone(k), pre:pre,
         dayLabel:t.day!==null?DAYJP[t.day]:"任意",
         dayDate:dd?`${dd.getMonth()+1}/${dd.getDate()}`:"",
         isToday:(viewOffset===0&&t.day===TI.wd),
-        overdue:(dd&&dd<TI.date&&!isDone(k)),
+        overdue:(!pre&&dd&&dd<TI.date&&!isDone(k)),
         lab:t.lab, note:t.note||""
       });
     });
@@ -221,8 +236,10 @@ function ringHTML(pct,done,total){
 function carryHTML(){
   if(viewOffset!==0) return "";
   // last week's incomplete (weekly + dayPinned + sunday), exclude daily L
-  const items=[];
+  const items=[]; const ld=weekDates(-1);
   WEEK_TASKS.forEach(t=>{
+    const refDay=t.day!==null?dkey(ld[t.day]):dkey(ld[6]);
+    if(refDay<START) return;                 // 開始前のタスクは繰り越さない
     const k=taskKey(-1,t.id);
     if(!isDone(k)) items.push({k,sess:t.sess,lab:t.lab});
   });
@@ -233,9 +250,12 @@ function carryHTML(){
   return `<div class="carry"><h3>🔴 先週のやり残し ${items.length}件（タップで消化）</h3>${ci}</div>`;
 }
 function taskRow(o){
-  let cls="row"+(o.done?" done":"")+(o.isToday&&!o.done?" today":"")+(o.overdue?" overdue":"");
-  const dayHTML=`<div class="day">${o.isToday?'<span class="now">● 今日 ':''}${o.dayLabel}${o.dayDate?" "+o.dayDate:""}${o.isToday?'</span>':''}</div>`;
-  return `<div class="${cls}" onclick="toggle('${o.key}')">
+  let cls="row"+(o.done?" done":"")+(o.pre?" pre":"")+(o.isToday&&!o.done&&!o.pre?" today":"")+(o.overdue?" overdue":"");
+  const dlabel=`${o.dayLabel}${o.dayDate?" "+o.dayDate:""}`;
+  const badge=o.pre?'<span class="pretag">開始前 </span>':(o.isToday?'<span class="now">● 今日 </span>':'');
+  const dayHTML=`<div class="day">${badge}${dlabel}</div>`;
+  const click=o.pre?'':`onclick="toggle('${o.key}')"`;
+  return `<div class="${cls}" ${click}>
     <div class="box">✓</div>
     <div class="meta">${dayHTML}<div class="lab">${o.lab}</div>${o.note?`<div class="note">${o.note}</div>`:""}</div>
   </div>`;
@@ -247,6 +267,7 @@ function statsView(){
   const t=new Date(); t.setHours(0,0,0,0);
   let cur=0, d=new Date(t);
   for(let i=0;i<400;i++){
+    if(dkey(d)<START) break;                          // 開始前まで遡ったら終了
     const wd=(d.getDay()+6)%7;
     if(wd===6){ d.setDate(d.getDate()-1); continue; } // Sunday: skip
     const done=isDone(dailyKey(d));
@@ -295,10 +316,8 @@ function statsView(){
   // weekly completion bars last 8 weeks
   let bars="";
   for(let w=-7;w<=0;w++){
-    const dates=weekDates(w); let tot=0,dn=0;
-    L_DAYS.forEach(di=>{tot++;if(isDone(dailyKey(dates[di])))dn++;});
-    WEEK_TASKS.forEach(tk=>{tot++;if(isDone(taskKey(w,tk.id)))dn++;});
-    const p=Math.round(dn/tot*100);
+    const ws=weekStats(w);
+    const p=ws.total?Math.round(ws.done/ws.total*100):0;
     bars+=`<div class="bar"><div class="fill" style="height:${p}%"></div>
       <div class="wl">${w===0?'今':w}</div></div>`;
   }
