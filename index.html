@@ -114,26 +114,26 @@ const SESS={
   S:{name:"Speaking",color:"var(--S)"},
   W:{name:"Writing",color:"var(--W)"},
 };
-// 0=Mon .. 6=Sun
-const DAYJP=["月","火","水","木","金","土","日"];
+// 0=Sun .. 6=Sat（週の始まりは日曜）
+const DAYJP=["日","月","火","水","木","金","土"];
 // task templates
 const DAILY_L={id:"L-core",sess:"L",lab:"Lコア：①ディクテ→②シャドー→③スペリング",
   note:"最低でも①ディクテ15分。連続性が命。前半=Part A中心 / 後半=Part Cも混ぜる"};
 const WEEK_TASKS=[
-  {id:"L-sun",sess:"L",day:6,lab:"問題集1回分＋パート別採点→スコアログ",
-   note:"🔁 間違えた音源は翌週のディクテ素材へ回す"},
-  {id:"R-tue",sess:"R",day:1,lab:"Part C テキスト①（解く→間違い＋自信なしを深掘り）"},
-  {id:"R-wed",sess:"R",day:2,lab:"Part C テキスト②（同上）"},
-  {id:"R-fri",sess:"R",day:4,lab:"Part B 1セット（6問）を深掘り"},
-  {id:"R-sat",sess:"R",day:5,lab:"溢れた復習＋Part A 1セット15分（計測のみ）＋誤答ノート週次見直し"},
+  {id:"L-sun",sess:"L",day:0,lab:"問題集1回分＋パート別採点→スコアログ",
+   note:"🔁 間違えた音源はこの週の月〜土のディクテ素材へ回す"},
+  {id:"R-tue",sess:"R",day:2,lab:"Part C テキスト①（解く→間違い＋自信なしを深掘り）"},
+  {id:"R-wed",sess:"R",day:3,lab:"Part C テキスト②（同上）"},
+  {id:"R-fri",sess:"R",day:5,lab:"Part B 1セット（6問）を深掘り"},
+  {id:"R-sat",sess:"R",day:6,lab:"溢れた復習＋Part A 1セット15分（計測のみ）＋誤答ノート週次見直し"},
   {id:"S-roleplay",sess:"S",day:null,lab:"ロールプレイ ×1"},
   {id:"S-reading",sess:"S",day:null,lab:"音読 ×1"},
   {id:"S-phrase",sess:"S",day:null,lab:"フレーズ暗記 ×1"},
   {id:"W-write",sess:"W",day:null,lab:"本番 referral letter を1通書いて提出"},
   {id:"W-grade",sess:"W",day:null,lab:"Claude添削／採点を反映"},
 ];
-// L daily runs Mon..Sat (days 0..5)
-const L_DAYS=[0,1,2,3,4,5];
+// L daily runs Mon..Sat（日曜始まりなので 1..6）
+const L_DAYS=[1,2,3,4,5,6];
 
 let state=JSON.parse(localStorage.getItem(KEY)||'{"done":{}}');
 let viewOffset=0;   // weeks from current
@@ -142,18 +142,17 @@ let tab="week";
 const save=()=>localStorage.setItem(KEY,JSON.stringify(state));
 function pad(n){return String(n).padStart(2,"0");}
 function dkey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
-function monday(offset){
+function weekStart(offset){
   const n=new Date(); n.setHours(0,0,0,0);
-  const wd=(n.getDay()+6)%7;            // 0=Mon
-  n.setDate(n.getDate()-wd+offset*7);
+  n.setDate(n.getDate()-n.getDay()+offset*7);   // 日曜始まり
   return n;
 }
 function weekDates(offset){
-  const m=monday(offset); const a=[];
+  const m=weekStart(offset); const a=[];
   for(let i=0;i<7;i++){const d=new Date(m);d.setDate(m.getDate()+i);a.push(d);}
   return a;
 }
-const wkKey=offset=>"w:"+dkey(monday(offset));
+const wkKey=offset=>"w:"+dkey(weekStart(offset));
 const dailyKey=(d)=>"d:"+dkey(d)+":L-core";
 const taskKey=(offset,id)=>wkKey(offset)+":"+id;
 const isDone=k=>!!state.done[k];
@@ -161,7 +160,7 @@ function toggle(k){ if(state.done[k]) delete state.done[k]; else state.done[k]=t
 
 function todayInfo(){
   const t=new Date(); t.setHours(0,0,0,0);
-  return {date:t,key:dkey(t),wd:(t.getDay()+6)%7};
+  return {date:t,key:dkey(t),wd:t.getDay()};
 }
 // 開始日を考慮した週の集計（開始前の日/タスクは計上しない）
 function weekStats(offset){
@@ -181,7 +180,7 @@ function weekView(){
   const TI=todayInfo();
   const m=dates[0], su=dates[6];
   document.getElementById("range").textContent=
-    `${m.getMonth()+1}/${m.getDate()}(月) – ${su.getMonth()+1}/${su.getDate()}(日)`+
+    `${m.getMonth()+1}/${m.getDate()}(日) – ${su.getMonth()+1}/${su.getDate()}(土)`+
     (viewOffset===0?"  今週":viewOffset<0?`  ${viewOffset}週`:`  +${viewOffset}週`);
 
   // progress
@@ -225,9 +224,12 @@ function weekView(){
   // ② 今週のタスク（曜日別・今日は除外）
   h+=`<div class="weekhd">🗓 ${viewOffset===0?'今週のタスク（曜日別）':'この週のタスク'}</div>`;
   for(const sk of ["L","R","S","W"]){
+    const entries=[];
+    if(sk==="L") L_DAYS.forEach(di=>entries.push({day:di, r:buildLDay(di)}));
+    WEEK_TASKS.filter(t=>t.sess===sk).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
+    entries.sort((a,b)=>a.day-b.day);   // 日曜(0)→土(6)→任意(99)
     let rows="";
-    if(sk==="L") L_DAYS.forEach(di=>{ const r=buildLDay(di); if(!shownToday.has(r.key)) rows+=r.html; });
-    WEEK_TASKS.filter(t=>t.sess===sk).forEach(t=>{ const r=buildTask(t); if(!shownToday.has(r.key)) rows+=r.html; });
+    entries.forEach(e=>{ if(!shownToday.has(e.r.key)) rows+=e.r.html; });
     if(rows) h+=`<div class="grp"><div class="ghead"><span class="dot" style="background:${SESS[sk].color}"></span>${sk} · ${SESS[sk].name}</div>${rows}</div>`;
   }
   return h;
@@ -280,8 +282,8 @@ function statsView(){
   let cur=0, d=new Date(t);
   for(let i=0;i<400;i++){
     if(dkey(d)<START) break;                          // 開始前まで遡ったら終了
-    const wd=(d.getDay()+6)%7;
-    if(wd===6){ d.setDate(d.getDate()-1); continue; } // Sunday: skip
+    const wd=d.getDay();
+    if(wd===0){ d.setDate(d.getDate()-1); continue; } // Sunday: skip
     const done=isDone(dailyKey(d));
     if(done){ cur++; }
     else if(d<t){ break; } // past & missed -> break (today not-yet-done is forgiven)
@@ -295,8 +297,8 @@ function statsView(){
     if(prev){
       const pa=new Date(prev),ca=new Date(ds);
       let gap=Math.round((ca-pa)/86400000);
-      // tolerate a single Sunday gap
-      if(gap===1||(gap===2&&((pa.getDay()+6)%7===5))) run++;
+      // tolerate a single Sunday gap (Sat→Mon)
+      if(gap===1||(gap===2&&pa.getDay()===6)) run++;
       else run=1;
     } else run=1;
     mx=Math.max(mx,run); prev=ds;
@@ -308,18 +310,18 @@ function statsView(){
 
   // heatmap last 12 weeks
   const cells=[];
-  const start=monday(-11);
+  const start=weekStart(-11);
   for(let i=0;i<7*12;i++){
     const dt=new Date(start); dt.setDate(start.getDate()+i);
-    const wd=(dt.getDay()+6)%7;
+    const wd=dt.getDay();
     let on=false,future=dt>t;
-    if(wd===6) on=isDone(taskKey(weekOffsetOf(dt),"L-sun"));
+    if(wd===0) on=isDone(taskKey(weekOffsetOf(dt),"L-sun"));
     else on=isDone(dailyKey(dt));
     let col= future?"var(--card2)": on?"var(--L)":"var(--card2)";
-    let op = on?(wd===6?.55:1):1;
+    let op = on?(wd===0?.55:1):1;
     cells.push(`<div class="cell" style="background:${col};opacity:${op}" title="${dkey(dt)}"></div>`);
   }
-  h+=`<div class="stat"><h3>過去12週間の実施（縦=月→日）</h3>
+  h+=`<div class="stat"><h3>過去12週間の実施（縦=日→土）</h3>
     <div class="heat">${cells.join("")}</div>
     <div class="legend">少 <span class="cell" style="background:var(--card2)"></span>
     <span class="cell" style="background:var(--L);opacity:.55"></span>
@@ -350,8 +352,8 @@ function statsView(){
   return h;
 }
 function weekOffsetOf(dt){
-  const m0=monday(0), md=new Date(dt); md.setHours(0,0,0,0);
-  const mw=(md.getDay()+6)%7; md.setDate(md.getDate()-mw);
+  const m0=weekStart(0), md=new Date(dt); md.setHours(0,0,0,0);
+  md.setDate(md.getDate()-md.getDay());
   return Math.round((md-m0)/(7*86400000));
 }
 
