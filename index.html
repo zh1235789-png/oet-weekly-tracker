@@ -67,6 +67,8 @@
   .meta .lab{font-size:14px;line-height:1.4}
   .row.done .meta .lab{text-decoration:line-through;text-decoration-color:var(--faint)}
   .meta .note{font-size:11px;color:var(--faint);margin-top:4px;line-height:1.4}
+  .sphd{font-size:12px;font-weight:700;color:var(--warn);margin:-4px 0 10px}
+  .spday{font-size:10px;color:var(--warn);font-weight:700}
   .empty{color:var(--faint);font-size:13px;text-align:center;padding:24px 0}
   /* stats */
   .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
@@ -113,6 +115,7 @@ const SESS={
   R:{name:"Reading",color:"var(--R)"},
   S:{name:"Speaking",color:"var(--S)"},
   W:{name:"Writing",color:"var(--W)"},
+  X:{name:"記録",color:"var(--dim)"},
 };
 // 0=Sun .. 6=Sat（週の始まりは日曜）
 const DAYJP=["日","月","火","水","木","金","土"];
@@ -132,6 +135,65 @@ const WEEK_TASKS=[
   {id:"W-write",sess:"W",day:null,lab:"本番 referral letter を1通書いて提出"},
   {id:"W-grade",sess:"W",day:null,lab:"Claude添削／採点を反映"},
 ];
+// 特別期間：日付ごとの差し替えメニュー。この日は通常のLコア・曜日固定タスクを出さない（任意のS/Wは残す）
+const SPECIAL={
+  "2026-09-18":{title:"🍁 シルバーウィーク準備日・約1時間",tasks:[
+    {id:"L-prep",sess:"L",lab:"素材準備：Jahshan PDFの問題ページだけ書き出す",
+     note:"英語学習/OET/matarials/Listening Jahshan OET Collection。問題の直後に解答があるので問題ページだけ印刷。ST2 p51／E2L I p117／ST3 p286"},
+    {id:"L-dict",sess:"L",lab:"ディクテーション 20分"},
+    {id:"S-prep",sess:"S",lab:"Card05（帯状疱疹）のキーワードと締め4パーツを紙に書く"},
+  ]},
+  "2026-09-19":{title:"🍁 シルバーウィーク・約5時間",tasks:[
+    {id:"L-mock1",sess:"L",lab:"初見フル模試①：Sample Test 2 ＋ 転記照合1パス",
+     note:"音源 Audio/4- Sample Test 2（A13分/B9分/C18分）。問題 p51／解答 p61。綴り・複数-s・単位・桁を照合"},
+    {id:"L-rev1",sess:"L",lab:"模試①の復習：失点箇所をディクテ → エラーログに分類",
+     note:"「ディクテでは書けたのに解答で落とした」件数を数える"},
+    {id:"W-write5",sess:"W",lab:"W5 本番40分：Sample Test 1 の Writing ケース",
+     note:"冒頭 I am writing to refer／本文3段落／過去時制で統一"},
+    {id:"W-grade5",sess:"W",lab:"W5 を Claude 添削に出す"},
+    {id:"S-rec05",sess:"S",lab:"Card05 を2本録音（締め4パーツ）",
+     note:"要約 → 行動 → safety net → 最終質問"},
+  ]},
+  "2026-09-20":{title:"🍁 シルバーウィーク・2時間",tasks:[
+    {id:"R-c1",sess:"R",lab:"Part C 1テキスト：解く13分 → 構造復旧7分 → 誤答の言語化10分"},
+    {id:"L-shadow",sess:"L",lab:"模試①の失点トラックをスクリプト無しでシャドーイング 30分"},
+    {id:"S-empathy",sess:"S",lab:"共感の型：死別／怒り／恐怖の3場面を声に出す 20分",
+     note:"感情の開示に検査値・統計・機序で返さない"},
+    {id:"W-rewrite5",sess:"W",lab:"W5 を添削反映で書き直し＋骨格フレーズ20へ追記 30分"},
+  ]},
+  "2026-09-21":{title:"🍁 シルバーウィーク・約5時間",tasks:[
+    {id:"R-full",sess:"R",lab:"Reading フル通し（A 15分 → B+C 45分）所要時間をメモ",
+     note:"SOLO Official01〜03 の最も古いもの。既出なのでスコアは割り引いて見る"},
+    {id:"R-rev",sess:"R",lab:"復習：B/C の誤答に理由タグ、マッチングは根拠の段落を書き出す"},
+    {id:"L-partA",sess:"L",lab:"初見 Part A だけ：E2Language Test I ＋ 転記照合",
+     note:"音源 Audio/10- E2Language Test I。問題 p117／解答 p126。目安 20/24"},
+    {id:"S-recST1",sess:"S",lab:"Sample Test 1 の Speaking カード2枚を録音（初見）",
+     note:"Card05と合わせて締め4パーツの連続本数を数える。録音は 英語学習/OET/Speaking/録音/ へ"},
+  ]},
+  "2026-09-22":{title:"🍁 シルバーウィーク・約5時間",tasks:[
+    {id:"L-mock2",sess:"L",lab:"初見フル模試②：Sample Test 3 ＋ 転記照合",
+     note:"音源 Audio/26- Sample Test 3（A11分/B9分/C17分）。問題 p286／解答 p296"},
+    {id:"L-rev2",sess:"L",lab:"模試②の復習：①と失点の型が同じか比べる"},
+    {id:"W-write6",sess:"W",lab:"W6 本番40分",
+     note:"SOLO Medicine05以降は書く前に docx で既出確認。W5と連続で事故なし・Language 5/7以上ならゲート3クリア"},
+    {id:"W-grade6",sess:"W",lab:"W6 を Claude 添削に出す"},
+    {id:"S-rec21",sess:"S",lab:"Card21 か Card22 を再録音（共感の型が出るか）"},
+  ]},
+  "2026-09-23":{title:"🍁 シルバーウィーク・2時間（まとめ）",tasks:[
+    {id:"R-b",sess:"R",lab:"Part B 6問"},
+    {id:"L-dict2",sess:"L",lab:"模試②の失点トラックをディクテーション 30分"},
+    {id:"S-rec",sess:"S",lab:"1本録音（締め4パーツの連続記録を伸ばす）"},
+    {id:"X-log",sess:"X",lab:"結果を記録：スプレッドシート／各プランの進捗ログ／Obsidianの連休ノート"},
+  ]},
+};
+const spKey=(d,id)=>"d:"+dkey(d)+":"+id;
+const isSpecial=d=>!!SPECIAL[dkey(d)];
+// その日のLが済んだか（特別日はLタスクのどれか1つでOK）
+function lDayDone(d){
+  const sp=SPECIAL[dkey(d)];
+  if(sp) return sp.tasks.some(t=>t.sess==="L"&&isDone(spKey(d,t.id)));
+  return isDone(dailyKey(d));
+}
 // L daily runs Mon..Sat（日曜始まりなので 1..6）
 const L_DAYS=[1,2,3,4,5,6];
 
@@ -165,9 +227,10 @@ function todayInfo(){
 // 開始日を考慮した週の集計（開始前の日/タスクは計上しない）
 function weekStats(offset){
   const dates=weekDates(offset); let total=0,done=0;
-  L_DAYS.forEach(di=>{ if(dkey(dates[di])<START) return; total++; if(isDone(dailyKey(dates[di]))) done++; });
+  L_DAYS.forEach(di=>{ if(dkey(dates[di])<START||isSpecial(dates[di])) return; total++; if(isDone(dailyKey(dates[di]))) done++; });
+  dates.forEach(d=>{ const sp=SPECIAL[dkey(d)]; if(sp) sp.tasks.forEach(t=>{ total++; if(isDone(spKey(d,t.id))) done++; }); });
   WEEK_TASKS.forEach(t=>{
-    if(t.day!==null){ if(dkey(dates[t.day])<START) return; }
+    if(t.day!==null){ if(dkey(dates[t.day])<START||isSpecial(dates[t.day])) return; }
     else { if(dkey(dates[6])<START) return; }   // 任意タスクは週末で判定
     total++; if(isDone(taskKey(offset,t.id))) done++;
   });
@@ -205,6 +268,15 @@ function weekView(){
       isToday, overdue:(!pre&&dd&&dd<TI.date&&!isDone(k)), lab:t.lab, note:t.note||""})};
   };
 
+  const buildSp=(di,t)=>{
+    const d=dates[di], k=spKey(d,t.id);
+    const isToday=(viewOffset===0&&di===TI.wd);
+    return {key:k, pre:false, html:taskRow({key:k,done:isDone(k),pre:false,
+      dayLabel:DAYJP[di], dayDate:`${d.getMonth()+1}/${d.getDate()}`, isToday, sp:true,
+      overdue:(d<TI.date&&!isDone(k)), lab:t.lab, note:t.note||""})};
+  };
+  const spOf=di=>SPECIAL[dkey(dates[di])];
+
   let h=ringHTML(pct,done,total);
   h+=carryHTML();
 
@@ -212,21 +284,27 @@ function weekView(){
   const shownToday=new Set();
   if(viewOffset===0){
     const items=[];
-    if(L_DAYS.includes(TI.wd)){ const r=buildLDay(TI.wd); if(!r.pre) items.push(r); }
-    WEEK_TASKS.filter(t=>t.day===TI.wd).forEach(t=>{ const r=buildTask(t); if(!r.pre) items.push(r); });
+    const tsp=spOf(TI.wd);
+    if(tsp){ tsp.tasks.forEach(t=>items.push(buildSp(TI.wd,t))); }
+    else {
+      if(L_DAYS.includes(TI.wd)){ const r=buildLDay(TI.wd); if(!r.pre) items.push(r); }
+      WEEK_TASKS.filter(t=>t.day===TI.wd).forEach(t=>{ const r=buildTask(t); if(!r.pre) items.push(r); });
+    }
     items.forEach(r=>shownToday.add(r.key));
     const td=dates[TI.wd];
     h+=`<div class="todayhd">📍 今日 ${DAYJP[TI.wd]} ${td.getMonth()+1}/${td.getDate()}</div>`;
+    if(tsp) h+=`<div class="sphd">${tsp.title}</div>`;
     h+= items.length ? items.map(r=>r.html).join("")
       : `<div class="todaynone">今日やるべき必須タスクはありません${dkey(TI.date)<START?'（プログラム開始前）':'。下の任意タスク（S/W）から進めてOK'}</div>`;
   }
 
   // ② 今週のタスク（曜日別・今日は除外）
   h+=`<div class="weekhd">🗓 ${viewOffset===0?'今週のタスク（曜日別）':'この週のタスク'}</div>`;
-  for(const sk of ["L","R","S","W"]){
+  for(const sk of ["L","R","S","W","X"]){
     const entries=[];
-    if(sk==="L") L_DAYS.forEach(di=>entries.push({day:di, r:buildLDay(di)}));
-    WEEK_TASKS.filter(t=>t.sess===sk).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
+    if(sk==="L") L_DAYS.forEach(di=>{ if(!spOf(di)) entries.push({day:di, r:buildLDay(di)}); });
+    WEEK_TASKS.filter(t=>t.sess===sk&&!(t.day!==null&&spOf(t.day))).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
+    for(let di=0;di<7;di++){ const sp=spOf(di); if(sp) sp.tasks.filter(t=>t.sess===sk).forEach(t=>entries.push({day:di, r:buildSp(di,t)})); }
     entries.sort((a,b)=>a.day-b.day);   // 日曜(0)→土(6)→任意(99)
     let rows="";
     entries.forEach(e=>{ if(!shownToday.has(e.r.key)) rows+=e.r.html; });
@@ -254,18 +332,21 @@ function carryHTML(){
   WEEK_TASKS.forEach(t=>{
     const refDay=t.day!==null?dkey(ld[t.day]):dkey(ld[6]);
     if(refDay<START) return;                 // 開始前のタスクは繰り越さない
+    if(t.day!==null&&isSpecial(ld[t.day])) return;   // 特別メニューで差し替えた日
     const k=taskKey(-1,t.id);
     if(!isDone(k)) items.push({k,sess:t.sess,lab:t.lab});
   });
+  ld.forEach(d=>{ const sp=SPECIAL[dkey(d)]; if(sp) sp.tasks.forEach(t=>{
+    const k=spKey(d,t.id); if(!isDone(k)) items.push({k,sess:t.sess,lab:`${d.getMonth()+1}/${d.getDate()} ${t.lab}`}); }); });
   if(!items.length) return "";
   let ci=items.map(it=>`<div class="ci" onclick="toggle('${it.k}')">
-      <span class="tag" style="color:var(--${it.sess==='L'?'L':it.sess==='R'?'R':it.sess==='S'?'S':'W'})">${it.sess}</span>
+      <span class="tag" style="color:${SESS[it.sess].color}">${it.sess}</span>
       <span>${it.lab}</span><span class="box"></span></div>`).join("");
   return `<div class="carry"><h3>🔴 先週のやり残し ${items.length}件（タップで消化）</h3>${ci}</div>`;
 }
 function taskRow(o){
   let cls="row"+(o.done?" done":"")+(o.pre?" pre":"")+(o.isToday&&!o.done&&!o.pre?" today":"")+(o.overdue?" overdue":"");
-  const dlabel=`${o.dayLabel}${o.dayDate?" "+o.dayDate:""}`;
+  const dlabel=`${o.dayLabel}${o.dayDate?" "+o.dayDate:""}${o.sp?' <span class="spday">🍁連休</span>':''}`;
   const badge=o.pre?'<span class="pretag">開始前 </span>':(o.isToday?'<span class="now">● 今日 </span>':'');
   const dayHTML=`<div class="day">${badge}${dlabel}</div>`;
   const click=o.pre?'':`onclick="toggle('${o.key}')"`;
@@ -284,14 +365,16 @@ function statsView(){
     if(dkey(d)<START) break;                          // 開始前まで遡ったら終了
     const wd=d.getDay();
     if(wd===0){ d.setDate(d.getDate()-1); continue; } // Sunday: skip
-    const done=isDone(dailyKey(d));
+    const done=lDayDone(d);
     if(done){ cur++; }
     else if(d<t){ break; } // past & missed -> break (today not-yet-done is forgiven)
     d.setDate(d.getDate()-1);
   }
   // longest streak over recorded daily keys
-  const dailyDates=Object.keys(state.done).filter(k=>k.startsWith("d:")&&k.endsWith("L-core"))
-    .map(k=>k.slice(2,12)).sort();
+  const dailyDates=[...new Set([
+    ...Object.keys(state.done).filter(k=>k.startsWith("d:")&&k.endsWith("L-core")).map(k=>k.slice(2,12)),
+    ...Object.keys(SPECIAL).filter(ds=>lDayDone(new Date(ds+"T00:00:00")))
+  ])].sort();
   let mx=0,run=0,prev=null;
   dailyDates.forEach(ds=>{
     if(prev){
@@ -315,8 +398,8 @@ function statsView(){
     const dt=new Date(start); dt.setDate(start.getDate()+i);
     const wd=dt.getDay();
     let on=false,future=dt>t;
-    if(wd===0) on=isDone(taskKey(weekOffsetOf(dt),"L-sun"));
-    else on=isDone(dailyKey(dt));
+    if(wd===0&&!isSpecial(dt)) on=isDone(taskKey(weekOffsetOf(dt),"L-sun"));
+    else on=lDayDone(dt);
     let col= future?"var(--card2)": on?"var(--L)":"var(--card2)";
     let op = on?(wd===0?.55:1):1;
     cells.push(`<div class="cell" style="background:${col};opacity:${op}" title="${dkey(dt)}"></div>`);
@@ -341,7 +424,7 @@ function statsView(){
   const c=k=>Object.keys(state.done).filter(x=>k.test(x)).length;
   const cR=Object.keys(state.done).filter(x=>/:R-/.test(x)).length;
   const cS=Object.keys(state.done).filter(x=>/:S-/.test(x)).length;
-  const cQ=Object.keys(state.done).filter(x=>/:L-sun/.test(x)).length;
+  const cQ=Object.keys(state.done).filter(x=>/:L-(sun|mock)/.test(x)).length;
   const cW=Object.keys(state.done).filter(x=>/:W-write/.test(x)).length;
   h+=`<div class="stat"><h3>累計</h3><div class="counts">
     <div class="cnt"><div class="n" style="color:var(--L)">${cQ}</div><div class="l">問題集 完了回</div></div>
