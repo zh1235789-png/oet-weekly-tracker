@@ -110,6 +110,7 @@
 "use strict";
 const KEY="oet-weekly-v2";
 const START="2026-06-21";   // プログラム開始日。これより前は「開始前」扱い（計上しない）
+const CARRY_FROM="2026-09-13"; // リセット日。これより前に始まった週のやり残しは繰り越さない
 const SESS={
   L:{name:"Listening",color:"var(--L)"},
   R:{name:"Reading",color:"var(--R)"},
@@ -329,6 +330,7 @@ function carryHTML(){
   if(viewOffset!==0) return "";
   // last week's incomplete (weekly + dayPinned + sunday), exclude daily L
   const items=[]; const ld=weekDates(-1);
+  if(dkey(ld[0])<CARRY_FROM) return "";   // リセット前の週は繰り越さない
   WEEK_TASKS.forEach(t=>{
     const refDay=t.day!==null?dkey(ld[t.day]):dkey(ld[6]);
     if(refDay<START) return;                 // 開始前のタスクは繰り越さない
