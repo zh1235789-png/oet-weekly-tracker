@@ -110,7 +110,7 @@
 "use strict";
 const KEY="oet-weekly-v2";
 const START="2026-06-21";   // プログラム開始日。これより前は「開始前」扱い（計上しない）
-const CARRY_FROM="2026-09-13"; // リセット日。これより前に始まった週のやり残しは繰り越さない
+const CARRY_FROM="2026-10-04"; // リセット日。これより前に始まった週のやり残しは繰り越さない（10/7再始動）
 const SESS={
   L:{name:"Listening",color:"var(--L)"},
   R:{name:"Reading",color:"var(--R)"},
@@ -121,11 +121,11 @@ const SESS={
 // 0=Sun .. 6=Sat（週の始まりは日曜）
 const DAYJP=["日","月","火","水","木","金","土"];
 // task templates
-const DAILY_L={id:"L-core",sess:"L",lab:"Lコア：①ディクテ→②シャドー→③スペリング",
-  note:"最低でも①ディクテ15分。連続性が命。前半=Part A中心 / 後半=Part Cも混ぜる"};
+const DAILY_L={id:"L-core",sess:"L",lab:"Lコア：①止めない再解答（Part A 1本）→②ディクテ→③スペリング",
+  note:"①採点済みPart Aを一時停止なしで書き切る。空欄禁止・綴りは頭3〜4文字でOK。書き切れたら1.1〜1.15倍へ。②は①で書けなかった箇所だけ止めて書く。忙しい日も①の10分だけは切らさない"};
 const WEEK_TASKS=[
-  {id:"L-sun",sess:"L",day:0,lab:"問題集1回分＋パート別採点→スコアログ",
-   note:"🔁 間違えた音源はこの週の月〜土のディクテ素材へ回す"},
+  {id:"L-sun",sess:"L",day:0,lab:"初見Part A（余力でB/C）＋採点→スコアと無回答数をログ",
+   note:"Jahshan冊子の未使用セット・等速・止めない。目標 Part A 18/24・無回答2以下。🔁 解いた音源はこの週の①素材へ回す"},
   {id:"R-tue",sess:"R",day:2,lab:"Part C テキスト①（解く→間違い＋自信なしを深掘り）"},
   {id:"R-wed",sess:"R",day:3,lab:"Part C テキスト②（同上）"},
   {id:"R-fri",sess:"R",day:5,lab:"Part B 1セット（6問）を深掘り"},
