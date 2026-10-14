@@ -69,6 +69,31 @@
   .meta .note{font-size:11px;color:var(--faint);margin-top:4px;line-height:1.4}
   .sphd{font-size:12px;font-weight:700;color:var(--warn);margin:-4px 0 10px}
   .spday{font-size:10px;color:var(--warn);font-weight:700}
+  .gate{background:#0c2a3a;border:1px solid #0e4a63;border-radius:14px;padding:12px 14px;margin-bottom:14px}
+  .gate .gt{font-size:13px;font-weight:700;color:var(--L)}
+  .gate .gl{font-size:13px;margin-top:4px}
+  .gate .gs{font-size:11px;color:var(--faint);margin-top:4px}
+  .lg{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:12px;color:var(--dim)}
+  .lg .sugg{margin-bottom:8px}.lg .sugg b{color:var(--L);font-size:14px}.lg .sugg span{color:var(--faint)}
+  .lgrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;border:none;color:var(--dim);padding:6px 10px;font-size:13px}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.sug{color:var(--L)}
+  .seg button.on{background:var(--L);color:#0f172a;font-weight:700}
+  .lg input{width:52px;background:var(--card2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:6px;font-size:16px;text-align:center}
+  .drow{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:8px 10px 8px 12px;margin-bottom:6px;font-size:13px}
+  .drow.today{border-color:var(--L)}.drow.overdue{border-color:#7f1d1d}.drow.pre{opacity:.4}
+  .drow .dl{font-weight:700;color:var(--dim);min-width:58px}.drow .now{color:var(--L);margin-right:3px}
+  .drow .res{font-size:11px;color:var(--faint)}
+  .chips{margin-left:auto;display:flex;gap:6px}
+  .chip{min-width:40px;height:32px;padding:0 8px;border:1.5px solid var(--faint);border-radius:8px;display:flex;
+    align-items:center;justify-content:center;font-size:14px;color:var(--dim);cursor:pointer}
+  .chip.on{background:var(--ok);border-color:var(--ok);color:#0f172a;font-weight:700}
+  details.other{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+  details.other summary{font-size:13px;font-weight:800;color:var(--dim);cursor:pointer;margin-bottom:12px;list-style-position:inside}
   .empty{color:var(--faint);font-size:13px;text-align:center;padding:24px 0}
   /* stats */
   .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
@@ -83,6 +108,15 @@
   .bar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px}
   .bar .fill{width:100%;background:var(--L);border-radius:4px 4px 0 0;min-height:2px;opacity:.85}
   .bar .wl{font-size:9px;color:var(--faint)}
+  .tw{position:relative}
+  .tbars{display:flex;gap:6px;padding-top:16px}
+  .tb{flex:1;display:flex;flex-direction:column;align-items:center}
+  .tb .plot{height:90px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+  .tb .fill{width:100%;border-radius:4px 4px 0 0;opacity:.85}
+  .tb .bv{font-size:10px;color:var(--dim);margin-bottom:2px}
+  .tb .wl{height:16px;line-height:16px;font-size:9px;color:var(--faint)}
+  .goal{position:absolute;left:0;right:0;border-top:1.5px dashed var(--L);opacity:.7;pointer-events:none}
+  .goal span{position:absolute;right:0;top:-14px;font-size:9px;color:var(--L)}
   .counts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .cnt{background:var(--card2);border-radius:10px;padding:12px}
   .cnt .n{font-size:24px;font-weight:800}
@@ -121,11 +155,24 @@ const SESS={
 // 0=Sun .. 6=Sat（週の始まりは日曜）
 const DAYJP=["日","月","火","水","木","金","土"];
 // task templates
-const DAILY_L={id:"L-core",sess:"L",lab:"Lコア：①止めない再解答（Part A 1本）→②ディクテ→③スペリング",
-  note:"①採点済みPart Aを一時停止なしで書き切る。空欄禁止・綴りは頭3〜4文字でOK。書き切れたら1.1〜1.15倍へ。②は①で書けなかった箇所だけ止めて書く。忙しい日も①の10分だけは切らさない"};
+// Listening 月〜土：3工程を別々にチェック。①が「その日やった」の判定（連続記録もこれ）
+const L_STEPS=[
+  {id:"L-1",short:"①",lab:"止めない再解答：採点済みPart A 1本を一時停止なしで書き切る",
+   note:"空欄禁止・綴りは頭3〜4文字でOK。終わったら速度と無回答数を下に記録。忙しい日もこれ10分だけは切らさない"},
+  {id:"L-2",short:"②",lab:"①で書けなかった箇所だけ止めてディクテ",
+   note:"2語の答えは前置詞・後ろの名詞まで（at rest／after Christmas／second toe）"},
+  {id:"L-3",short:"③",lab:"綴り・複数形・冠詞を照合 → エラーログに記入",
+   note:"Obsidian「OET Listening エラーログ」の今日のブロックへ"},
+];
+const SPEEDS=["1.0","1.1","1.15"];
+const GOAL={a:18,bl:2};   // 途中目標：初見Part A 18/24以上・無回答2以下（2026-10-07判断）
 const WEEK_TASKS=[
-  {id:"L-sun",sess:"L",day:0,lab:"初見Part A（余力でB/C）＋採点→スコアと無回答数をログ",
-   note:"Jahshan冊子の未使用セット・等速・止めない。目標 Part A 18/24・無回答2以下。🔁 解いた音源はこの週の①素材へ回す"},
+  {id:"L-sun",sess:"L",day:0,lab:"初見Part A（余力でB/C）を等速・止めずに解く → 採点",
+   note:"Jahshan冊子の未使用セット。点数と無回答数を下に記録。🔁 解いた音源は今週の①素材へ回す"},
+  {id:"L-shadow",sess:"L",day:null,from:"2026-10-11",lab:"今週の失点区間をシャドーイング 15分（スクリプト無し）",
+   note:"等速で書けなかった区間（例: E2L I A2「inflamed. But it never goes to the big toe」）"},
+  {id:"L-bc",sess:"L",day:null,from:"2026-10-11",lab:"Part B または C を1本（維持枠）",
+   note:"B/Cは武器。週1本で落とさない程度に"},
   // from: そのタスクを追加した週の日曜。それより前の週には出さず、繰り越しもしない
   // Reading（2026-10-14〜）：B/Cは通勤ドリルアプリで毎日数問。模試1回分を月〜木に分けて解き、土に採点
   {id:"R-mockA",from:"2026-10-11",sess:"R",day:1,lab:"模試 Part A（20問・15分通し）",
@@ -199,12 +246,18 @@ const isSpecial=d=>!!SPECIAL[dkey(d)];
 function lDayDone(d){
   const sp=SPECIAL[dkey(d)];
   if(sp) return sp.tasks.some(t=>t.sess==="L"&&isDone(spKey(d,t.id)));
-  return isDone(dailyKey(d));
+  return isDone(stepKey(d,"L-1"))||isDone(dailyKey(d));   // L-core は10/14以前の1チェック方式
 }
+const stepKey=(d,id)=>"d:"+dkey(d)+":"+id;
+const stepDone=(d,id)=>isDone(stepKey(d,id))||isDone(dailyKey(d));
 // L daily runs Mon..Sat（日曜始まりなので 1..6）
 const L_DAYS=[1,2,3,4,5,6];
 
-let state=JSON.parse(localStorage.getItem(KEY)||'{"done":{}}');
+let state;
+try{ state=JSON.parse(localStorage.getItem(KEY)||'{"done":{}}'); }catch(e){ state={done:{}}; }
+if(!state||typeof state!=="object") state={done:{}};
+state.done=state.done||{};
+state.log=state.log||{};   // 日付 → {sp:"1.0", bl:無回答数}（月〜土） / {a:点数, bl:無回答数}（日曜の初見）
 let viewOffset=0;   // weeks from current
 let tab="week";
 
@@ -226,17 +279,41 @@ const dailyKey=(d)=>"d:"+dkey(d)+":L-core";
 const taskKey=(offset,id)=>wkKey(offset)+":"+id;
 const isDone=k=>!!state.done[k];
 function toggle(k){ if(state.done[k]) delete state.done[k]; else state.done[k]=true; save(); render(); }
+function setLog(ds,field,val){
+  const e=state.log[ds]||{};
+  if(val===""||val===null||val===undefined) delete e[field];
+  else e[field]=field==="sp"?String(val):Math.max(0,Math.min(24,parseInt(val,10)||0));
+  if(Object.keys(e).length) state.log[ds]=e; else delete state.log[ds];
+  save(); render();
+}
+// 次の止めない再解答の速度：直近の記録で無回答0なら1段上げる、それ以外は据え置き
+function nextSpeed(beforeDs){
+  const ds=Object.keys(state.log).filter(k=>(!beforeDs||k<beforeDs)&&state.log[k].sp&&state.log[k].bl!==undefined).sort().pop();
+  if(!ds) return {sp:"1.0",why:"まず1.0倍で無回答0を目指す"};
+  const e=state.log[ds], i=SPEEDS.indexOf(e.sp);
+  const md=ds.slice(5).replace("-","/");
+  if(e.bl===0&&i<SPEEDS.length-1) return {sp:SPEEDS[i+1],why:`前回 ${md} ${e.sp}倍で無回答0 → 上げる`};
+  if(e.bl===0) return {sp:e.sp,why:`前回 ${md} ${e.sp}倍で無回答0。初見素材に切り替えてもよい`};
+  return {sp:e.sp,why:`前回 ${md} ${e.sp}倍で無回答${e.bl} → 同じ速度で無回答0まで`};
+}
 
 function todayInfo(){
   const t=new Date(); t.setHours(0,0,0,0);
   return {date:t,key:dkey(t),wd:t.getDay()};
 }
 // 開始日を考慮した週の集計（開始前の日/タスクは計上しない）
-function weekStats(offset){
+// 第2引数 "L" で Listening だけ、"other" で R/S/W/X だけ
+function weekStats(offset,only){
   const dates=weekDates(offset); let total=0,done=0;
-  L_DAYS.forEach(di=>{ if(dkey(dates[di])<START||isSpecial(dates[di])) return; total++; if(isDone(dailyKey(dates[di]))) done++; });
-  dates.forEach(d=>{ const sp=SPECIAL[dkey(d)]; if(sp) sp.tasks.forEach(t=>{ total++; if(isDone(spKey(d,t.id))) done++; }); });
+  const want=s=>!only||(only==="L"?s==="L":s!=="L");
+  // 10/14以前の週は L が1日1チェックだったので、その週は1日=1件で数える
+  const oneCheck=dkey(dates[0])<"2026-10-11";
+  if(want("L")) L_DAYS.forEach(di=>{ const d=dates[di]; if(dkey(d)<START||isSpecial(d)) return;
+    if(oneCheck){ total++; if(lDayDone(d)) done++; }
+    else L_STEPS.forEach(s=>{ total++; if(stepDone(d,s.id)) done++; }); });
+  dates.forEach(d=>{ const sp=SPECIAL[dkey(d)]; if(sp) sp.tasks.forEach(t=>{ if(!want(t.sess)) return; total++; if(isDone(spKey(d,t.id))) done++; }); });
   WEEK_TASKS.forEach(t=>{
+    if(!want(t.sess)) return;
     if(t.from&&dkey(dates[0])<t.from) return;   // 追加前の週には出さない
     if(t.day!==null){ if(dkey(dates[t.day])<START||isSpecial(dates[t.day])) return; }
     else { if(dkey(dates[6])<START) return; }   // 任意タスクは週末で判定
@@ -246,81 +323,137 @@ function weekStats(offset){
 }
 
 /* ---------- WEEK VIEW ---------- */
+const md=d=>`${d.getMonth()+1}/${d.getDate()}`;
 function weekView(){
   const dates=weekDates(viewOffset);
   const TI=todayInfo();
   const m=dates[0], su=dates[6];
   document.getElementById("range").textContent=
-    `${m.getMonth()+1}/${m.getDate()}(日) – ${su.getMonth()+1}/${su.getDate()}(土)`+
+    `${md(m)}(日) – ${md(su)}(土)`+
     (viewOffset===0?"  今週":viewOffset<0?`  ${viewOffset}週`:`  +${viewOffset}週`);
 
-  // progress
-  const ws=weekStats(viewOffset);
-  const total=ws.total, done=ws.done;
-  const pct=total?Math.round(done/total*100):0;
-
-  // START対応の行ビルダー
-  const buildLDay=di=>{
-    const d=dates[di], k=dailyKey(d), pre=dkey(d)<START;
-    const isToday=(viewOffset===0&&di===TI.wd);
-    return {key:k, pre, html:taskRow({key:k,done:isDone(k),pre,
-      dayLabel:DAYJP[di], dayDate:`${d.getMonth()+1}/${d.getDate()}`, isToday,
-      overdue:(!pre&&d<TI.date&&!isDone(k)), lab:DAILY_L.lab, note:DAILY_L.note})};
-  };
+  const oneCheck=dkey(dates[0])<"2026-10-11";   // 旧方式（Lは1日1チェック）の週
   const buildTask=t=>{
     const k=taskKey(viewOffset,t.id), dd=t.day!==null?dates[t.day]:null;
     const pre=t.day!==null?dkey(dd)<START:dkey(dates[6])<START;
     const isToday=(viewOffset===0&&t.day===TI.wd);
+    let extra="";
+    if(t.id==="L-sun"&&!pre) extra=sunLogHTML(dkey(dd));
     return {key:k, pre, html:taskRow({key:k,done:isDone(k),pre,
-      dayLabel:t.day!==null?DAYJP[t.day]:"任意", dayDate:dd?`${dd.getMonth()+1}/${dd.getDate()}`:"",
-      isToday, overdue:(!pre&&dd&&dd<TI.date&&!isDone(k)), lab:t.lab, note:t.note||""})};
+      dayLabel:t.day!==null?DAYJP[t.day]:"今週中", dayDate:dd?md(dd):"",
+      isToday, overdue:(!pre&&dd&&dd<TI.date&&!isDone(k)), lab:t.lab, note:t.note||"", extra})};
   };
-
   const buildSp=(di,t)=>{
     const d=dates[di], k=spKey(d,t.id);
     const isToday=(viewOffset===0&&di===TI.wd);
     return {key:k, pre:false, html:taskRow({key:k,done:isDone(k),pre:false,
-      dayLabel:DAYJP[di], dayDate:`${d.getMonth()+1}/${d.getDate()}`, isToday, sp:true,
+      dayLabel:DAYJP[di], dayDate:md(d), isToday, sp:true,
       overdue:(d<TI.date&&!isDone(k)), lab:t.lab, note:t.note||""})};
   };
+  const visible=t=>!(t.from&&dkey(dates[0])<t.from)&&!(t.day!==null&&SPECIAL[dkey(dates[t.day])]);
   const spOf=di=>SPECIAL[dkey(dates[di])];
 
-  let h=ringHTML(pct,done,total);
+  const wl=weekStats(viewOffset,"L"), wo=weekStats(viewOffset,"other");
+  let h=ringHTML(wl,wo);
+  h+=gateHTML();
   h+=carryHTML();
 
-  // ① 今日のタスク（現在週のみ）
-  const shownToday=new Set();
+  // ① 今日（現在週のみ）：Listening を先頭に、手順どおり縦に並べる
   if(viewOffset===0){
-    const items=[];
-    const tsp=spOf(TI.wd);
-    if(tsp){ tsp.tasks.forEach(t=>items.push(buildSp(TI.wd,t))); }
-    else {
-      if(L_DAYS.includes(TI.wd)){ const r=buildLDay(TI.wd); if(!r.pre) items.push(r); }
-      WEEK_TASKS.filter(t=>t.day===TI.wd).forEach(t=>{ const r=buildTask(t); if(!r.pre) items.push(r); });
+    const td=dates[TI.wd], tsp=spOf(TI.wd);
+    h+=`<div class="todayhd">📍 今日 ${DAYJP[TI.wd]} ${md(td)}</div>`;
+    let lrows="", orows="";
+    if(tsp){
+      h+=`<div class="sphd">${tsp.title}</div>`;
+      tsp.tasks.forEach(t=>{ const r=buildSp(TI.wd,t).html; if(t.sess==="L") lrows+=r; else orows+=r; });
+    } else if(dkey(TI.date)>=START){
+      if(L_DAYS.includes(TI.wd)) lrows+=lTodayHTML(td);
+      WEEK_TASKS.filter(t=>t.day===TI.wd&&visible(t)).forEach(t=>{ const r=buildTask(t).html; if(t.sess==="L") lrows+=r; else orows+=r; });
     }
-    items.forEach(r=>shownToday.add(r.key));
-    const td=dates[TI.wd];
-    h+=`<div class="todayhd">📍 今日 ${DAYJP[TI.wd]} ${td.getMonth()+1}/${td.getDate()}</div>`;
-    if(tsp) h+=`<div class="sphd">${tsp.title}</div>`;
-    h+= items.length ? items.map(r=>r.html).join("")
-      : `<div class="todaynone">今日やるべき必須タスクはありません${dkey(TI.date)<START?'（プログラム開始前）':'。下の任意タスク（S/W）から進めてOK'}</div>`;
+    h+= lrows ? `<div class="grp">${ghead("L")}${lrows}</div>`
+      : `<div class="todaynone">今日の Listening 必須はありません</div>`;
+    if(orows) h+=`<div class="grp">${ghead("other","今日のその他")}${orows}</div>`;
   }
 
-  // ② 今週のタスク（曜日別・今日は除外）
-  h+=`<div class="weekhd">🗓 ${viewOffset===0?'今週のタスク（曜日別）':'この週のタスク'}</div>`;
-  for(const sk of ["L","R","S","W","X"]){
+  // ② 今週の Listening
+  h+=`<div class="weekhd">🎧 ${viewOffset===0?'今週の':'この週の'} Listening</div>`;
+  // 月〜土：1日1行、①②③をチップでチェック
+  let days="";
+  L_DAYS.forEach(di=>{
+    const d=dates[di]; if(spOf(di)) return;
+    const pre=dkey(d)<START, isToday=(viewOffset===0&&di===TI.wd);
+    const lg=state.log[dkey(d)]||{};
+    const chips= oneCheck
+      ? `<span class="chip ${isDone(dailyKey(d))?'on':''}" ${pre?'':`onclick="toggle('${dailyKey(d)}')"`}>Lコア</span>`
+      : L_STEPS.map(s=>`<span class="chip ${stepDone(d,s.id)?'on':''}" ${pre?'':`onclick="toggle('${stepKey(d,s.id)}')"`}>${s.short}</span>`).join("");
+    const res=lg.sp?`<span class="res">${lg.sp}倍・無回答${lg.bl??'?'}</span>`:"";
+    const miss=!pre&&d<TI.date&&!lDayDone(d);
+    days+=`<div class="drow${isToday?' today':''}${miss?' overdue':''}${pre?' pre':''}">
+      <span class="dl">${isToday?'<span class="now">●</span>':''}${DAYJP[di]} ${md(d)}</span>${res}<span class="chips">${chips}</span></div>`;
+  });
+  for(let di=0;di<7;di++){ const sp=spOf(di); if(sp) sp.tasks.filter(t=>t.sess==="L").forEach(t=>days+=buildSp(di,t).html); }
+  h+=`<div class="grp">${days}</div>`;
+  let lw="";
+  WEEK_TASKS.filter(t=>t.sess==="L"&&visible(t)).forEach(t=>lw+=buildTask(t).html);
+  if(lw) h+=`<div class="grp">${lw}</div>`;
+
+  // ③ 維持枠 R/S/W（折りたたみ）
+  let other="";
+  for(const sk of ["R","S","W","X"]){
     const entries=[];
-    if(sk==="L") L_DAYS.forEach(di=>{ if(!spOf(di)) entries.push({day:di, r:buildLDay(di)}); });
-    WEEK_TASKS.filter(t=>t.sess===sk&&!(t.from&&dkey(dates[0])<t.from)&&!(t.day!==null&&spOf(t.day))).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
+    WEEK_TASKS.filter(t=>t.sess===sk&&visible(t)).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
     for(let di=0;di<7;di++){ const sp=spOf(di); if(sp) sp.tasks.filter(t=>t.sess===sk).forEach(t=>entries.push({day:di, r:buildSp(di,t)})); }
-    entries.sort((a,b)=>a.day-b.day);   // 日曜(0)→土(6)→任意(99)
-    let rows="";
-    entries.forEach(e=>{ if(!shownToday.has(e.r.key)) rows+=e.r.html; });
-    if(rows) h+=`<div class="grp"><div class="ghead"><span class="dot" style="background:${SESS[sk].color}"></span>${sk} · ${SESS[sk].name}</div>${rows}</div>`;
+    entries.sort((a,b)=>a.day-b.day);
+    const rows=entries.map(e=>e.r.html).join("");
+    if(rows) other+=`<div class="grp">${ghead(sk)}${rows}</div>`;
   }
+  if(other) h+=`<details class="other"${otherOpen?' open':''} ontoggle="otherOpen=this.open">
+    <summary>📦 維持枠 Reading / Speaking / Writing　${wo.done}/${wo.total}</summary>${other}</details>`;
   return h;
 }
-function ringHTML(pct,done,total){
+let otherOpen=false;
+function ghead(sk,label){
+  const col=sk==="other"?"var(--dim)":SESS[sk].color;
+  return `<div class="ghead"><span class="dot" style="background:${col}"></span>${label||sk+" · "+SESS[sk].name}</div>`;
+}
+// 今日の L：3工程を縦に、①の下に速度・無回答の記録欄
+function lTodayHTML(d){
+  const ds=dkey(d), ns=nextSpeed(ds), lg=state.log[ds]||{};
+  return L_STEPS.map(s=>{
+    const k=stepKey(d,s.id);
+    let extra="";
+    if(s.id==="L-1"){
+      const seg=SPEEDS.map(v=>`<button class="${lg.sp===v?'on':''}${!lg.sp&&v===ns.sp?' sug':''}" onclick="event.stopPropagation();setLog('${ds}','sp','${lg.sp===v?'':v}')">${v}倍</button>`).join("");
+      extra=`<div class="lg" onclick="event.stopPropagation()">
+        <div class="sugg">今日の速度 <b>${ns.sp}倍</b>　<span>${ns.why}</span></div>
+        <div class="lgrow"><span class="seg">${seg}</span>
+        <label>無回答 <input type="number" inputmode="numeric" min="0" max="24" value="${lg.bl??''}" placeholder="–"
+          onchange="setLog('${ds}','bl',this.value)"> 問</label></div></div>`;
+    }
+    return taskRow({key:k,done:stepDone(d,s.id),pre:false,dayLabel:s.short,dayDate:"",
+      isToday:true,overdue:false,lab:s.lab,note:s.note,extra});
+  }).join("");
+}
+function sunLogHTML(ds){
+  const lg=state.log[ds]||{};
+  return `<div class="lg" onclick="event.stopPropagation()"><div class="lgrow">
+    <label>Part A <input type="number" inputmode="numeric" min="0" max="24" value="${lg.a??''}" placeholder="–"
+      onchange="setLog('${ds}','a',this.value)"> /24</label>
+    <label>無回答 <input type="number" inputmode="numeric" min="0" max="24" value="${lg.bl??''}" placeholder="–"
+      onchange="setLog('${ds}','bl',this.value)"> 問</label></div></div>`;
+}
+// 途中目標パネル：直近の初見 Part A（日曜の記録）
+function gateHTML(){
+  const ss=Object.keys(state.log).filter(k=>state.log[k].a!==undefined).sort();
+  const last=ss.length?state.log[ss[ss.length-1]]:null;
+  const ok=last&&last.a>=GOAL.a&&(last.bl??99)<=GOAL.bl;
+  const lastTxt=last?`直近 ${ss[ss.length-1].slice(5).replace("-","/")}：<b>${last.a}/24</b>・無回答 <b>${last.bl??'?'}</b> ${ok?'✅':''}`
+    :'日曜の初見 Part A を記録するとここに出ます';
+  return `<div class="gate"><div class="gt">🎯 途中目標　初見 Part A ${GOAL.a}/24以上・無回答${GOAL.bl}以下</div>
+    <div class="gl">${lastTxt}</div><div class="gs">ゲート判定 2026/12下旬〜2027/1中旬：初見で36/42以上を連続2回</div></div>`;
+}
+function ringHTML(wl,wo){
+  const pct=wl.total?Math.round(wl.done/wl.total*100):0;
   const r=26,c=2*Math.PI*r,off=c*(1-pct/100);
   return `<div class="ring">
     <svg width="64" height="64" viewBox="0 0 64 64">
@@ -330,7 +463,7 @@ function ringHTML(pct,done,total){
         transform="rotate(-90 32 32)"/>
       <text x="32" y="37" text-anchor="middle" font-size="15" font-weight="800" fill="var(--txt)">${pct}%</text>
     </svg>
-    <div class="info"><b>今週 ${done}/${total} 完了</b><br>残り ${total-done} 件</div>
+    <div class="info"><b>Listening ${wl.done}/${wl.total} 完了</b><br>残り ${wl.total-wl.done} 件　｜　維持枠 ${wo.done}/${wo.total}</div>
   </div>`;
 }
 function carryHTML(){
@@ -341,7 +474,7 @@ function carryHTML(){
   WEEK_TASKS.forEach(t=>{
     const refDay=t.day!==null?dkey(ld[t.day]):dkey(ld[6]);
     if(refDay<START) return;                 // 開始前のタスクは繰り越さない
-    if(t.from&&dkey(ld[0])<t.from) return;   // 追加前の週のタスクは繰り越さない
+    if(t.from&&dkey(ld[0])<t.from) return;   // 追加前の週のぶんは繰り越さない
     if(t.day!==null&&isSpecial(ld[t.day])) return;   // 特別メニューで差し替えた日
     const k=taskKey(-1,t.id);
     if(!isDone(k)) items.push({k,sess:t.sess,lab:t.lab});
@@ -362,7 +495,7 @@ function taskRow(o){
   const click=o.pre?'':`onclick="toggle('${o.key}')"`;
   return `<div class="${cls}" ${click}>
     <div class="box">✓</div>
-    <div class="meta">${dayHTML}<div class="lab">${o.lab}</div>${o.note?`<div class="note">${o.note}</div>`:""}</div>
+    <div class="meta">${dayHTML}<div class="lab">${o.lab}</div>${o.note?`<div class="note">${o.note}</div>`:""}${o.extra||""}</div>
   </div>`;
 }
 
@@ -382,7 +515,7 @@ function statsView(){
   }
   // longest streak over recorded daily keys
   const dailyDates=[...new Set([
-    ...Object.keys(state.done).filter(k=>k.startsWith("d:")&&k.endsWith("L-core")).map(k=>k.slice(2,12)),
+    ...Object.keys(state.done).filter(k=>k.startsWith("d:")&&/:L-(core|1)$/.test(k)).map(k=>k.slice(2,12)),
     ...Object.keys(SPECIAL).filter(ds=>lDayDone(new Date(ds+"T00:00:00")))
   ])].sort();
   let mx=0,run=0,prev=null;
@@ -397,7 +530,7 @@ function statsView(){
     mx=Math.max(mx,run); prev=ds;
   });
 
-  let h=`<div class="stat"><h3>🔥 Lディクテーション 連続記録</h3>
+  let h=`<div class="stat"><h3>🔥 止めない再解答 連続記録（月〜土）</h3>
     <div class="streak"><span class="big">${cur}</span><span class="u">日連続</span>
     <span class="max">最長 ${mx}日<br>総実施 ${dailyDates.length}日</span></div></div>`;
 
@@ -430,14 +563,31 @@ function statsView(){
   }
   h+=`<div class="stat"><h3>週次達成率（直近8週）</h3><div class="bars">${bars}</div></div>`;
 
+  // 初見 Part A の推移（日曜の記録）と、止めない再解答の無回答数の推移
+  const trend=(keys,val,max,goal,goalLbl,good,col)=>{
+    if(!keys.length) return '<div class="empty">まだ記録がありません</div>';
+    const b=keys.map(k=>{ const v=val(state.log[k]); const p=Math.round(Math.min(v,max)/max*100);
+      return `<div class="tb"><div class="plot"><div class="bv">${v}</div><div class="fill" style="height:${Math.max(p,2)}%;background:${good(v)?'var(--ok)':col}"></div></div>
+        <div class="wl">${k.slice(5).replace("-","/")}</div></div>`; }).join("");
+    return `<div class="tw"><div class="goal" style="bottom:${16+goal/max*90}px"><span>${goalLbl}</span></div><div class="tbars">${b}</div></div>`;
+  };
+  const aK=Object.keys(state.log).filter(k=>state.log[k].a!==undefined).sort().slice(-8);
+  h+=`<div class="stat"><h3>🎯 初見 Part A（日曜・直近8回）</h3>${trend(aK,e=>e.a,24,GOAL.a,"18",v=>v>=GOAL.a,"var(--L)")}</div>`;
+  const bK=Object.keys(state.log).filter(k=>state.log[k].sp&&state.log[k].bl!==undefined).sort().slice(-10);
+  h+=`<div class="stat"><h3>止めない再解答の無回答数（直近10回・緑=0）</h3>${trend(bK,e=>e.bl,12,GOAL.bl,"2",v=>v===0,"var(--warn)")}
+    ${bK.length?`<div class="legend">速度: ${bK.map(k=>state.log[k].sp).join(" → ")}</div>`:""}</div>`;
+
   // cumulative counts
-  const c=k=>Object.keys(state.done).filter(x=>k.test(x)).length;
   const cR=Object.keys(state.done).filter(x=>/:R-/.test(x)).length;
   const cS=Object.keys(state.done).filter(x=>/:S-/.test(x)).length;
   const cQ=Object.keys(state.done).filter(x=>/:L-(sun|mock)/.test(x)).length;
   const cW=Object.keys(state.done).filter(x=>/:W-write/.test(x)).length;
+  const c1=Object.keys(state.done).filter(x=>/:L-1$/.test(x)).length;
+  const cFast=Object.values(state.log).filter(e=>e.sp&&e.sp!=="1.0").length;
   h+=`<div class="stat"><h3>累計</h3><div class="counts">
-    <div class="cnt"><div class="n" style="color:var(--L)">${cQ}</div><div class="l">問題集 完了回</div></div>
+    <div class="cnt"><div class="n" style="color:var(--L)">${c1}</div><div class="l">止めない再解答 回数</div></div>
+    <div class="cnt"><div class="n" style="color:var(--L)">${cFast}</div><div class="l">うち1.1倍以上</div></div>
+    <div class="cnt"><div class="n" style="color:var(--L)">${cQ}</div><div class="l">初見・模試 回数</div></div>
     <div class="cnt"><div class="n" style="color:var(--R)">${cR}</div><div class="l">Reading 演習回</div></div>
     <div class="cnt"><div class="n" style="color:var(--S)">${cS}</div><div class="l">Speaking 実施回</div></div>
     <div class="cnt"><div class="n" style="color:var(--W)">${cW}</div><div class="l">Writing 提出通数</div></div>
