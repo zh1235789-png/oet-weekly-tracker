@@ -126,13 +126,19 @@ const DAILY_L={id:"L-core",sess:"L",lab:"Lコア：①止めない再解答（Pa
 const WEEK_TASKS=[
   {id:"L-sun",sess:"L",day:0,lab:"初見Part A（余力でB/C）＋採点→スコアと無回答数をログ",
    note:"Jahshan冊子の未使用セット・等速・止めない。目標 Part A 18/24・無回答2以下。🔁 解いた音源はこの週の①素材へ回す"},
-  {id:"R-tue",sess:"R",day:2,lab:"Part C テキスト①（解く→間違い＋自信なしを深掘り）"},
-  {id:"R-wed",sess:"R",day:3,lab:"Part C テキスト②（同上）"},
-  {id:"R-fri",sess:"R",day:5,lab:"Part B 1セット（6問）を深掘り"},
-  {id:"R-sat",sess:"R",day:6,lab:"溢れた復習＋Part A 1セット15分（計測のみ）＋誤答ノート週次見直し"},
-  {id:"S-roleplay",sess:"S",day:null,lab:"ロールプレイ ×1"},
-  {id:"S-reading",sess:"S",day:null,lab:"音読 ×1"},
-  {id:"S-phrase",sess:"S",day:null,lab:"フレーズ暗記 ×1"},
+  // from: そのタスクを追加した週の日曜。それより前の週には出さず、繰り越しもしない
+  // Reading（2026-10-14〜）：B/Cは通勤ドリルアプリで毎日数問。模試1回分を月〜木に分けて解き、土に採点
+  {id:"R-mockA",from:"2026-10-11",sess:"R",day:1,lab:"模試 Part A（20問・15分通し）",
+   note:"素材は通勤ドリルと重ならないもの：SOLO Official01→02→03 → NEW OET Sample12。開始・終了時刻をメモ、空欄は ×（不明）/T（時間切れ）"},
+  {id:"R-mockB",from:"2026-10-11",sess:"R",day:2,lab:"模試 Part B（6問）"},
+  {id:"R-mockC1",from:"2026-10-11",sess:"R",day:3,lab:"模試 Part C Text 1（8問・約22分）"},
+  {id:"R-mockC2",from:"2026-10-11",sess:"R",day:4,lab:"模試 Part C Text 2（8問・約22分）",note:"金は予備日（溢れた分をここで）"},
+  {id:"R-grade",from:"2026-10-11",sess:"R",day:6,lab:"模試をClaudeに採点に出す → 誤答ノート"},
+  {id:"R-app",from:"2026-10-11",sess:"R",day:null,lab:"通勤ドリルでB・Cを数問（毎日）",
+   note:"zh1235789-png.github.io/oet-reading-commute/ 。週の終わりに、ほぼ毎日できたらチェック"},
+  {id:"S-roleplay",sess:"S",day:null,lab:"ロールプレイ ×1（録音）",note:"今の予定は Card13・Card15 の再録"},
+  {id:"S-phrase",from:"2026-10-11",sess:"S",day:null,lab:"フラッシュカードアプリで10分（毎日）",
+   note:"締め4パーツ・拒否の初動・汎用語10語を重点に。週の終わりに、ほぼ毎日できたらチェック"},
   {id:"W-write",sess:"W",day:null,lab:"本番 referral letter を1通書いて提出"},
   {id:"W-grade",sess:"W",day:null,lab:"Claude添削／採点を反映"},
 ];
@@ -231,6 +237,7 @@ function weekStats(offset){
   L_DAYS.forEach(di=>{ if(dkey(dates[di])<START||isSpecial(dates[di])) return; total++; if(isDone(dailyKey(dates[di]))) done++; });
   dates.forEach(d=>{ const sp=SPECIAL[dkey(d)]; if(sp) sp.tasks.forEach(t=>{ total++; if(isDone(spKey(d,t.id))) done++; }); });
   WEEK_TASKS.forEach(t=>{
+    if(t.from&&dkey(dates[0])<t.from) return;   // 追加前の週には出さない
     if(t.day!==null){ if(dkey(dates[t.day])<START||isSpecial(dates[t.day])) return; }
     else { if(dkey(dates[6])<START) return; }   // 任意タスクは週末で判定
     total++; if(isDone(taskKey(offset,t.id))) done++;
@@ -304,7 +311,7 @@ function weekView(){
   for(const sk of ["L","R","S","W","X"]){
     const entries=[];
     if(sk==="L") L_DAYS.forEach(di=>{ if(!spOf(di)) entries.push({day:di, r:buildLDay(di)}); });
-    WEEK_TASKS.filter(t=>t.sess===sk&&!(t.day!==null&&spOf(t.day))).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
+    WEEK_TASKS.filter(t=>t.sess===sk&&!(t.from&&dkey(dates[0])<t.from)&&!(t.day!==null&&spOf(t.day))).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
     for(let di=0;di<7;di++){ const sp=spOf(di); if(sp) sp.tasks.filter(t=>t.sess===sk).forEach(t=>entries.push({day:di, r:buildSp(di,t)})); }
     entries.sort((a,b)=>a.day-b.day);   // 日曜(0)→土(6)→任意(99)
     let rows="";
@@ -334,6 +341,7 @@ function carryHTML(){
   WEEK_TASKS.forEach(t=>{
     const refDay=t.day!==null?dkey(ld[t.day]):dkey(ld[6]);
     if(refDay<START) return;                 // 開始前のタスクは繰り越さない
+    if(t.from&&dkey(ld[0])<t.from) return;   // 追加前の週のタスクは繰り越さない
     if(t.day!==null&&isSpecial(ld[t.day])) return;   // 特別メニューで差し替えた日
     const k=taskKey(-1,t.id);
     if(!isDone(k)) items.push({k,sess:t.sess,lab:t.lab});
