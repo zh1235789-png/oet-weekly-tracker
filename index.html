@@ -174,13 +174,14 @@ const WEEK_TASKS=[
   {id:"L-bc",sess:"L",day:null,from:"2026-10-11",lab:"Part B または C を1本（維持枠）",
    note:"B/Cは武器。週1本で落とさない程度に"},
   // from: そのタスクを追加した週の日曜。それより前の週には出さず、繰り越しもしない
-  // Reading（2026-10-14〜）：B/Cは通勤ドリルアプリで毎日数問。模試1回分を月〜木に分けて解き、土に採点
-  {id:"R-mockA",from:"2026-10-11",sess:"R",day:1,lab:"模試 Part A（20問・15分通し）",
+  // Reading（2026-10-14〜10-24）：模試1回分を月〜木に分けて解き、土に採点。until の週から出さない
+  // 2026-10-25の週〜：模試は曜日と無関係に MOCK_SETS の順で1日1パート（下の mockToday）
+  {id:"R-mockA",from:"2026-10-11",until:"2026-10-25",sess:"R",day:1,lab:"模試 Part A（20問・15分通し）",
    note:"素材は通勤ドリルと重ならないもの：SOLO Official01→02→03 → NEW OET Sample12。開始・終了時刻をメモ、空欄は ×（不明）/T（時間切れ）"},
-  {id:"R-mockB",from:"2026-10-11",sess:"R",day:2,lab:"模試 Part B（6問）"},
-  {id:"R-mockC1",from:"2026-10-11",sess:"R",day:3,lab:"模試 Part C Text 1（8問・約22分）"},
-  {id:"R-mockC2",from:"2026-10-11",sess:"R",day:4,lab:"模試 Part C Text 2（8問・約22分）",note:"金は予備日（溢れた分をここで）"},
-  {id:"R-grade",from:"2026-10-11",sess:"R",day:6,lab:"模試をClaudeに採点に出す → 誤答ノート"},
+  {id:"R-mockB",from:"2026-10-11",until:"2026-10-25",sess:"R",day:2,lab:"模試 Part B（6問）"},
+  {id:"R-mockC1",from:"2026-10-11",until:"2026-10-25",sess:"R",day:3,lab:"模試 Part C Text 1（8問・約22分）"},
+  {id:"R-mockC2",from:"2026-10-11",until:"2026-10-25",sess:"R",day:4,lab:"模試 Part C Text 2（8問・約22分）",note:"金は予備日（溢れた分をここで）"},
+  {id:"R-grade",from:"2026-10-11",until:"2026-10-25",sess:"R",day:6,lab:"模試をClaudeに採点に出す → 誤答ノート"},
   {id:"R-app",from:"2026-10-11",sess:"R",day:null,lab:"通勤ドリルでB・Cを数問（毎日）",
    note:"zh1235789-png.github.io/oet-reading-commute/ 。週の終わりに、ほぼ毎日できたらチェック"},
   {id:"S-roleplay",sess:"S",day:null,lab:"ロールプレイ ×1（録音）",note:"今の予定は Card13・Card15 の再録"},
@@ -189,6 +190,50 @@ const WEEK_TASKS=[
   {id:"W-write",sess:"W",day:null,lab:"本番 referral letter を1通書いて提出"},
   {id:"W-grade",sess:"W",day:null,lab:"Claude添削／採点を反映"},
 ];
+// Reading 模試：曜日に関係なく、まだ終わっていない最初のパートを1日1つ。解いた日に採点に出す（2026-10-30〜）
+const MOCK_SETS=["Official01","Official02","Official03","NEW OET Sample12"];
+const MOCK_PARTS=[
+  {p:"A",lab:"Part A（20問・15分通し）"},
+  {p:"B",lab:"Part B（6問）"},
+  {p:"C1",lab:"Part C Text 1（8問・約22分）"},
+  {p:"C2",lab:"Part C Text 2（8問・約22分）"},
+];
+const MOCK_FROM="2026-10-30";
+const MOCK_PRE={"Official01:A":"2026-10-16","Official01:B":"2026-10-16"};   // アプリ導入前に採点済み
+const mockKey=k=>"m:"+k;   // state.done に 解いた日付（YYYY-MM-DD）を入れる
+const mockDate=k=>MOCK_PRE[k]||state.done[mockKey(k)]||"";
+function mockAll(){ const a=[]; MOCK_SETS.forEach(st=>MOCK_PARTS.forEach(pt=>a.push({k:st+":"+pt.p,set:st,part:pt}))); return a; }
+// 今日出すパート：今日解いたものがあればそれ（済み表示）、なければ未完了の最初のもの
+function mockToday(ds){
+  const all=mockAll();
+  const doneToday=all.find(m=>!MOCK_PRE[m.k]&&state.done[mockKey(m.k)]===ds);
+  if(doneToday) return {...doneToday,done:true};
+  const next=all.find(m=>!mockDate(m.k));
+  return next?{...next,done:false}:null;
+}
+function toggleMock(k){
+  const key=mockKey(k);
+  if(state.done[key]) delete state.done[key]; else state.done[key]=todayInfo().key;
+  save(); render();
+}
+function mockRowHTML(ds){
+  const m=mockToday(ds);
+  if(!m) return taskRow({key:"",done:true,pre:true,dayLabel:"模試",dayDate:"",isToday:false,overdue:false,
+    lab:"用意した模試はすべて解き終わりました",note:"次の素材を MOCK_SETS に足す"});
+  const cls="row"+(m.done?" done":" today");
+  return `<div class="${cls}" onclick="toggleMock('${m.k}')">
+    <div class="box">✓</div>
+    <div class="meta"><div class="day"><span class="now">● 今日 </span>模試 ${m.set}</div>
+    <div class="lab">${m.part.lab}</div>
+    <div class="note">解いたらその日のうちにClaudeへ採点に出す。できなかった日は同じパートが翌日も出る</div></div></div>`;
+}
+function mockProgressHTML(){
+  const all=mockAll(), next=all.find(m=>!mockDate(m.k));
+  const st=next?next.set:MOCK_SETS[MOCK_SETS.length-1];
+  const chips=MOCK_PARTS.map(pt=>{ const k=st+":"+pt.p, d=mockDate(k);
+    return `<span class="chip ${d?'on':''}">${pt.p}${d?' '+d.slice(5).replace("-","/"):''}</span>`; }).join("");
+  return `<div class="drow"><span class="dl">模試 ${st}</span><span class="chips">${chips}</span></div>`;
+}
 // 特別期間：日付ごとの差し替えメニュー。この日は通常のLコア・曜日固定タスクを出さない（任意のS/Wは残す）
 const SPECIAL={
   "2026-09-18":{title:"🍁 シルバーウィーク準備日・約1時間",tasks:[
@@ -315,6 +360,7 @@ function weekStats(offset,only){
   WEEK_TASKS.forEach(t=>{
     if(!want(t.sess)) return;
     if(t.from&&dkey(dates[0])<t.from) return;   // 追加前の週には出さない
+    if(t.until&&dkey(dates[0])>=t.until) return;   // 廃止後の週には出さない
     if(t.day!==null){ if(dkey(dates[t.day])<START||isSpecial(dates[t.day])) return; }
     else { if(dkey(dates[6])<START) return; }   // 任意タスクは週末で判定
     total++; if(isDone(taskKey(offset,t.id))) done++;
@@ -350,7 +396,7 @@ function weekView(){
       dayLabel:DAYJP[di], dayDate:md(d), isToday, sp:true,
       overdue:(d<TI.date&&!isDone(k)), lab:t.lab, note:t.note||""})};
   };
-  const visible=t=>!(t.from&&dkey(dates[0])<t.from)&&!(t.day!==null&&SPECIAL[dkey(dates[t.day])]);
+  const visible=t=>!(t.from&&dkey(dates[0])<t.from)&&!(t.until&&dkey(dates[0])>=t.until)&&!(t.day!==null&&SPECIAL[dkey(dates[t.day])]);
   const spOf=di=>SPECIAL[dkey(dates[di])];
 
   const wl=weekStats(viewOffset,"L"), wo=weekStats(viewOffset,"other");
@@ -369,6 +415,7 @@ function weekView(){
     } else if(dkey(TI.date)>=START){
       if(L_DAYS.includes(TI.wd)) lrows+=lTodayHTML(td);
       WEEK_TASKS.filter(t=>t.day===TI.wd&&visible(t)).forEach(t=>{ const r=buildTask(t).html; if(t.sess==="L") lrows+=r; else orows+=r; });
+      if(TI.key>=MOCK_FROM) orows+=mockRowHTML(TI.key);
     }
     h+= lrows ? `<div class="grp">${ghead("L")}${lrows}</div>`
       : `<div class="todaynone">今日の Listening 必須はありません</div>`;
@@ -403,6 +450,7 @@ function weekView(){
     const entries=[];
     WEEK_TASKS.filter(t=>t.sess===sk&&visible(t)).forEach(t=>entries.push({day:t.day===null?99:t.day, r:buildTask(t)}));
     for(let di=0;di<7;di++){ const sp=spOf(di); if(sp) sp.tasks.filter(t=>t.sess===sk).forEach(t=>entries.push({day:di, r:buildSp(di,t)})); }
+    if(sk==="R"&&dkey(dates[6])>=MOCK_FROM) entries.push({day:98, r:{html:mockProgressHTML()}});
     entries.sort((a,b)=>a.day-b.day);
     const rows=entries.map(e=>e.r.html).join("");
     if(rows) other+=`<div class="grp">${ghead(sk)}${rows}</div>`;
@@ -475,6 +523,7 @@ function carryHTML(){
     const refDay=t.day!==null?dkey(ld[t.day]):dkey(ld[6]);
     if(refDay<START) return;                 // 開始前のタスクは繰り越さない
     if(t.from&&dkey(ld[0])<t.from) return;   // 追加前の週のぶんは繰り越さない
+    if(t.until&&dkey(weekStart(0))>=t.until) return;   // 廃止したタスクは繰り越さない
     if(t.day!==null&&isSpecial(ld[t.day])) return;   // 特別メニューで差し替えた日
     const k=taskKey(-1,t.id);
     if(!isDone(k)) items.push({k,sess:t.sess,lab:t.lab});
